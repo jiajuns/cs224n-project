@@ -1,11 +1,13 @@
 from __future__ import print_function
 import time, logging
+import numpy as np
 
 logger = logging.getLogger()
 logger.setLevel(logging.DEBUG)
 logging.basicConfig(format='%(levelname)s:%(message)s', level=logging.DEBUG)
-"""Utilities for loading and padding dataset"""
+
 def load_and_preprocess_data(data_dir, max_context_len = 2834, max_question_len = 214):
+    """Utilities for loading and padding dataset"""
     start = time.time()
     logger.info("Loading training data...")
     train_context = read_data_from_file(data_dir + '/train.ids.context')
@@ -66,6 +68,9 @@ def pad_sequence(data, max_length):
         padded_sequence.append(new_sentence)
         masks.append(mask)
     return padded_sequence, masks
+
+def load_embeddings(dir):
+    return np.load(dir)['glove']
 
 if __name__ == '__main__':
     print("Testing")
