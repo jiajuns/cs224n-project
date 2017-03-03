@@ -1,0 +1,8 @@
+*.pyc
+*.aux
+*.log
+*.pdf
+*.vscodeLog
+/data/*
+/download/*
+/plots/*
