@@ -6,7 +6,6 @@
 CODE_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
 export PYTHONPATH=$PYTHONPATH:$CODE_DIR
-
 pip install -r $CODE_DIR/requirements.txt
 
 # download punkt, perluniprops

@@ -24,7 +24,6 @@ def get_optimizer(opt):
         assert (False)
     return optfn
 
-
 class Encoder(object):
     def __init__(self, size, vocab_dim):
         self.size = size
@@ -98,7 +97,7 @@ class QASystem(object):
         to assemble your reading comprehension system!
         :return:
         """
-        raise NotImplementedError("Connect all parts of your system here!")
+        pass
 
 
     def setup_loss(self):
