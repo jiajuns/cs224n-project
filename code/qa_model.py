@@ -100,7 +100,7 @@ class Decoder(object):
         return preds
 
 class QASystem(object):
-    def __init__(self, encoder, decoder, max_context_len, max_question_len, embeddings):
+    def __init__(self, encoder, decoder, flags, embeddings):
         """
         Initializes your System
 
@@ -110,21 +110,20 @@ class QASystem(object):
         """
         self.encoder = encoder
         self.decoder = decoder
-        self.max_context_len = max_context_len
-        self.max_question_len = max_question_len
+        self.max_context_len = flags.max_context_len
+        self.max_question_len = flags.max_question_len
         self.pretrained_embeddings = embeddings
         self.vocab_dim = encoder.vocab_dim
+        self.lr = flags.learning_rate
         self.n_class = 3  # 3 output class: start, end, null
 
         # ==== set up placeholder tokens ========
-        self.context_placeholder = tf.placeholder(tf.int32, shape=(None, max_context_len))
-        self.question_placeholder = tf.placeholder(tf.int32, shape = (None, max_question_len))
-        self.context_mask_placeholder = tf.placeholder(tf.bool, shape = (None, max_context_len))
-        self.question_mask_placeholder = tf.placeholder(tf.bool, shape = (None, max_question_len))
-        self.span_placeholder = tf.placeholder(tf.bool, shape = (None, max_context_len))
-        #self.dropout_placeholder = tf.placeholder(tf.float32, shape=(None))
-
-
+        self.context_placeholder = tf.placeholder(tf.int32, shape=(None, self.max_context_len))
+        self.question_placeholder = tf.placeholder(tf.int32, shape = (None, self.max_question_len))
+        self.context_mask_placeholder = tf.placeholder(tf.bool, shape = (None, self.max_context_len))
+        self.question_mask_placeholder = tf.placeholder(tf.bool, shape = (None, self.max_question_len))
+        self.span_placeholder = tf.placeholder(tf.int32, shape = (None, self.max_context_len))
+        self.dropout_placeholder = tf.placeholder(tf.float32, shape=(None))
 
         # ==== assemble pieces ====
         with tf.variable_scope("qa", initializer=tf.uniform_unit_scaling_initializer(1.0)):
@@ -133,7 +132,7 @@ class QASystem(object):
             self.loss = self.setup_loss(preds)
 
         # ==== set up training/updating procedure ====
-        pass
+        train_op = tf.train.AdamOptimizer(self.lr).minimize(self.loss)
 
     def setup_embeddings(self):
         """
@@ -173,23 +172,26 @@ class QASystem(object):
             loss = tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(masked_pred, masked_label))
         return loss
 
+    def create_feed_dict(self, context, question, context_mask, question_mask, span=None, dropout=1):
+        feed_dict = {
+            self.context_placeholder: context,
+            self.question_placeholder: question,
+            self.context_mask_placeholder: context_mask,
+            self.question_mask_placeholder: question_mask,
+        }
+        if span is not None:
+            feed_dict[self.span_placeholder] = span
+        return feed_dict
+
     def optimize(self, session, context, question, context_mask, question_mask, span):
         """
         Takes in actual data to optimize your model
         This method is equivalent to a step() function
         :return:
         """
-        input_feed = {
-                    self.context_placeholder: context,
-                    self.question_placeholder: question,
-                    self.context_mask_placeholder: context_mask,
-                    self.question_mask_placeholder: question_mask,
-                    self.span_placeholder: span
-                    }
+        input_feed = self.create_feed_dict(context, question, context_mask, question_mask, span)
         output_feed = [self.context_placeholder]
-
         outputs = session.run(output_feed, input_feed)
-
         return outputs
 
     def test(self, session, valid_x, valid_y):
@@ -198,13 +200,12 @@ class QASystem(object):
         and tune your hyperparameters according to the validation set performance
         :return:
         """
-        input_feed = {}
 
         # fill in this feed_dictionary like:
         # input_feed['valid_x'] = valid_x
+        input_feed = self.create_feed_dict() # have not finished here
 
         output_feed = []
-
         outputs = session.run(output_feed, input_feed)
 
         return outputs
@@ -250,8 +251,7 @@ class QASystem(object):
         valid_cost = 0
 
         for valid_x, valid_y in valid_dataset:
-          valid_cost = self.test(sess, valid_x, valid_y)
-
+            valid_cost = self.test(sess, valid_x, valid_y)
 
         return valid_cost
 
@@ -314,5 +314,15 @@ class QASystem(object):
         num_params = sum(map(lambda t: np.prod(tf.shape(t.value()).eval()), params))
         toc = time.time()
         logging.info("Number of params: %d (retreival took %f secs)" % (num_params, toc - tic))
-        print(dataset)
+
+        # with tf.Graph().as_default():
+        #     init = tf.global_variables_initializer()
+        #     saver = tf.train.Saver()
+
+        #     session.run(init)
+        #     model.fit(session, saver, train, dev)
+        #     output = model.output(session, dev_raw)
+        #     sentences, labels, predictions = zip(*output)
+        #     predictions = [[LBLS[l] for l in preds] for preds in predictions]
+        #     output = zip(sentences, labels, predictions)
 

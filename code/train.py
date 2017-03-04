@@ -76,7 +76,7 @@ def get_normalized_train_dir(train_dir):
     return global_train_dir
 
 def main(_):
-    
+
     # Do what you need to load datasets from FLAGS.data_dir
     train_data, val_data = load_and_preprocess_data(FLAGS.data_dir, FLAGS.max_context_len, FLAGS.max_question_len, debug = True)
 
@@ -87,7 +87,7 @@ def main(_):
     encoder = Encoder(FLAGS.state_size, FLAGS.max_context_len, FLAGS.max_question_len, FLAGS.embedding_size)
     decoder = Decoder(FLAGS.state_size, FLAGS.max_context_len, FLAGS.max_question_len, FLAGS.output_size)
 
-    qa = QASystem(encoder, decoder, FLAGS.max_context_len, FLAGS.max_question_len, embedding)
+    qa = QASystem(encoder, decoder, FLAGS, embedding)
 
     if not os.path.exists(FLAGS.log_dir):
         os.makedirs(FLAGS.log_dir)
@@ -105,7 +105,7 @@ def main(_):
         save_train_dir = get_normalized_train_dir(FLAGS.train_dir)
         qa.train(sess, train_data, save_train_dir)
 
-        qa.evaluate_answer(sess, train_data, vocab, FLAGS.evaluate, log=True)
+        #qa.evaluate_answer(sess, train_data, vocab, FLAGS.evaluate, log=True)
 
 if __name__ == "__main__":
     tf.app.run()
