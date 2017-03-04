@@ -11,9 +11,9 @@ import tensorflow as tf
 from tensorflow.python.ops import variable_scope as vs
 
 from evaluate import exact_match_score, f1_score
+from util import Progbar, minibatches
 
 logging.basicConfig(level=logging.INFO)
-
 
 def get_optimizer(opt):
     if opt == "adam":
@@ -115,7 +115,11 @@ class QASystem(object):
         self.pretrained_embeddings = embeddings
         self.vocab_dim = encoder.vocab_dim
         self.lr = flags.learning_rate
+        self.n_epoch = flags.epochs
+        self.batch_size = flags.batch_size
         self.n_class = 3  # 3 output class: start, end, null
+
+        self.saver = tf.train.Saver()
 
         # ==== set up placeholder tokens ========
         self.context_placeholder = tf.placeholder(tf.int32, shape=(None, self.max_context_len))
@@ -132,7 +136,7 @@ class QASystem(object):
             self.loss = self.setup_loss(preds)
 
         # ==== set up training/updating procedure ====
-        train_op = tf.train.AdamOptimizer(self.lr).minimize(self.loss)
+            self.train_op = tf.train.AdamOptimizer(self.lr).minimize(self.loss)
 
     def setup_embeddings(self):
         """
@@ -183,18 +187,31 @@ class QASystem(object):
             feed_dict[self.span_placeholder] = span
         return feed_dict
 
-    def optimize(self, session, context, question, context_mask, question_mask, span):
+    def optimize(self, session, train_batch):
         """
         Takes in actual data to optimize your model
         This method is equivalent to a step() function
         :return:
         """
+        context, question, context_mask, question_mask, span = train_batch # have not finished yet
         input_feed = self.create_feed_dict(context, question, context_mask, question_mask, span)
-        output_feed = [self.context_placeholder]
+        output_feed = [self.train_op, self.loss]
         outputs = session.run(output_feed, input_feed)
         return outputs
 
-    def test(self, session, valid_x, valid_y):
+    def run_epoch(self, session, train_examples, dev_examples):
+        prog = Progbar(target=1 + int(len(train_examples) / self.batch_size))
+        for i, batch in enumerate(minibatches(train_examples, self.batch_size)):
+            outputs = self.optimize(session, *batch)
+            prog.update(i + 1, [("train loss", outputs[1])])
+            # if self.report: self.report.log_train_loss(loss)
+        print("")
+
+        logging.info("Evaluating on development data")
+        f1, em = self.evaluate_answer(session, dev_examples)
+        return f1
+
+    def test(self, session, context, question, context_mask, question_mask, span):
         """
         in here you should compute a cost for your validation set
         and tune your hyperparameters according to the validation set performance
@@ -202,8 +219,7 @@ class QASystem(object):
         """
 
         # fill in this feed_dictionary like:
-        # input_feed['valid_x'] = valid_x
-        input_feed = self.create_feed_dict() # have not finished here
+        input_feed = self.create_feed_dict(context, question, context_mask, question_mask)
 
         output_feed = []
         outputs = session.run(output_feed, input_feed)
@@ -315,14 +331,16 @@ class QASystem(object):
         toc = time.time()
         logging.info("Number of params: %d (retreival took %f secs)" % (num_params, toc - tic))
 
-        # with tf.Graph().as_default():
-        #     init = tf.global_variables_initializer()
-        #     saver = tf.train.Saver()
 
-        #     session.run(init)
-        #     model.fit(session, saver, train, dev)
-        #     output = model.output(session, dev_raw)
-        #     sentences, labels, predictions = zip(*output)
-        #     predictions = [[LBLS[l] for l in preds] for preds in predictions]
-        #     output = zip(sentences, labels, predictions)
+        train_examples, dev_examples = split_data(dataset)
 
+        best_score = 0
+        for epoch in range(self.n_epoch):
+            print("Epoch {:} out of {:}".format(epoch + 1, self.n_ßepoch))
+            dev_score = self.run_epoch(session, train_examples, dev_examples)
+            if dev_score > best_score:
+                best_score = dev_score
+                print("New best dev score! Saving model in {}".format(train_dir))
+                self.saver.save(sess, train_dir)
+
+        return best_score
