@@ -86,13 +86,17 @@ class Decoder(object):
                               decided by how you choose to implement the encoder
         :return:
         """
+        preds = []
+
         with vs.variable_scope("decoder"):
             U = tf.get_variable("U", shape = (self.hidden_size, self.output_size),
                 initializer=tf.contrib.layers.xavier_initializer())
             b = tf.get_variable("b2", initializer = tf.zeros((self.output_size,)))
-            preds = tf.matmul(x[-1], U) + b
-            print(preds)
-            print(tf.reshape(preds, (-1, self.max_context_len, self.output_size)))
+            tf.get_variable_scope().reuse_variables()
+            for time_step in xrange(self.max_context_len):
+                temp_x = x[:, time_step, :]
+                output = tf.matmul(temp_x, U) + b
+                preds.append(output)
         return preds
 
 class QASystem(object):
@@ -140,9 +144,9 @@ class QASystem(object):
             vec_embeddings = tf.get_variable("embeddings", initializer=self.pretrained_embeddings)
             context_batch_embeddings = tf.nn.embedding_lookup(vec_embeddings, self.context_placeholder)
             question_batch_embeddings = tf.nn.embedding_lookup(vec_embeddings, self.question_placeholder)
-            context_embeddings = tf.reshape(context_batch_embeddings, 
+            context_embeddings = tf.reshape(context_batch_embeddings,
                     (-1, self.max_context_len, self.vocab_dim))
-            question_embeddings = tf.reshape(question_batch_embeddings, 
+            question_embeddings = tf.reshape(question_batch_embeddings,
                     (-1, self.max_question_len, self.vocab_dim))
         return context_embeddings, question_embeddings
 
@@ -153,11 +157,10 @@ class QASystem(object):
         to assemble your reading comprehension system!
         :return:
         """
-        encoded_layer = self.encoder.encode(context_embeddings, question_embeddings, 
+        encoded_layer = self.encoder.encode(context_embeddings, question_embeddings,
                         self.context_mask_placeholder, self.question_mask_placeholder)
         preds = self.decoder.decode(encoded_layer)
         return preds
-
 
     def setup_loss(self, preds):
         """
@@ -177,10 +180,10 @@ class QASystem(object):
         :return:
         """
         input_feed = {
-                    self.context_placeholder: context, 
-                    self.question_placeholder: question, 
-                    self.context_mask_placeholder: context_mask, 
-                    self.question_mask_placeholder: question_mask, 
+                    self.context_placeholder: context,
+                    self.question_placeholder: question,
+                    self.context_mask_placeholder: context_mask,
+                    self.question_mask_placeholder: question_mask,
                     self.span_placeholder: span
                     }
         output_feed = [self.context_placeholder]
