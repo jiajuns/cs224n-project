@@ -6,29 +6,39 @@ logger = logging.getLogger()
 logger.setLevel(logging.DEBUG)
 logging.basicConfig(format='%(levelname)s:%(message)s', level=logging.DEBUG)
 
-def load_and_preprocess_data(data_dir, max_context_len = 2834, max_question_len = 214):
+def load_and_preprocess_data(data_dir, max_context_len = 2834, max_question_len = 214, debug = True):
     """Utilities for loading and padding dataset"""
     start = time.time()
     logger.info("Loading training data...")
-    train_context = read_data_from_file(data_dir + '/train.ids.context')
-    train_question = read_data_from_file(data_dir + '/train.ids.question')
-    train_span = read_data_from_file(data_dir + '/train.span')
+    if debug:
+        logger.info("DEBUG Mode")
+        train_context = read_data_from_file(data_dir + '/toy.ids.context')
+        train_question = read_data_from_file(data_dir + '/toy.ids.question')
+        train_span = read_data_from_file(data_dir + '/toy.span')
+    else:
+        logger.info("Training Mode")
+        train_context = read_data_from_file(data_dir + '/train.ids.context')
+        train_question = read_data_from_file(data_dir + '/train.ids.question')
+        train_span = read_data_from_file(data_dir + '/train.span')
     train_context_padded, train_context_mask = pad_sequence(train_context, max_context_len)
     train_question_padded, train_question_mask = pad_sequence(train_question, max_question_len)
+    train_span_processed = preprocess_span(train_span, train_context_padded)
     train_data = vectorize(train_context_padded, train_context_mask,
-                        train_question_padded, train_question_mask, train_span)
+                        train_question_padded, train_question_mask, train_span_processed)
     logger.info("Done. Read %d sentences", len(train_data))
-    logger.info("Loading validation data...")
-    val_context = read_data_from_file(data_dir + '/val.ids.context')
-    val_question = read_data_from_file(data_dir + '/val.ids.question')
-    val_span = read_data_from_file(data_dir + '/val.span')
-    val_context_padded, val_context_mask = pad_sequence(val_context, max_context_len)
-    val_question_padded, val_question_mask = pad_sequence(val_question, max_question_len)
-    val_data = vectorize(val_context_padded, val_context_mask,
-                        val_question_padded, val_question_mask, val_span)
-    logger.info("Done. Read %d sentences", len(val_data))
-    logger.info("Data Loaded. Took %d seconds", time.time()-start)
-    return train_data, val_data
+    # logger.info("Loading validation data...")
+    # val_context = read_data_from_file(data_dir + '/val.ids.context')
+    # val_question = read_data_from_file(data_dir + '/val.ids.question')
+    # val_span = read_data_from_file(data_dir + '/val.span')
+    # val_context_padded, val_context_mask = pad_sequence(val_context, max_context_len)
+    # val_question_padded, val_question_mask = pad_sequence(val_question, max_question_len)
+    # val_span_processed = preprocess_span(val_span, val_context_padded)
+    # val_data = vectorize(val_context_padded, val_context_mask,
+    #                     val_question_padded, val_question_mask, val_span_processed)
+    # logger.info("Done. Read %d sentences", len(val_data))
+    # logger.info("Data Loaded. Took %d seconds", time.time()-start)
+    return train_data,1
+    #return train_data, val_data
 
 def read_data_from_file(dir):
     ret = []
@@ -45,6 +55,18 @@ def vectorize(context, context_mask, question, question_mask, span):
     (context2, context_mask2, quesiton2, question_mask2, span2),...]
     '''
     return(zip(context, context_mask, question, question_mask, span))
+
+def preprocess_span(span_vector, context):
+    new_span_vector = []
+    for i in xrange(len(span_vector)):
+        new_span = [0] * len(context[i])
+        try:
+            new_span[span_vector[i][0]] = 1
+        except:
+            print(i, span_vector[i], len(span_vector), len(context[i]))
+        new_span[span_vector[i][1]] = 2
+        new_span_vector.append(new_span)
+    return new_span_vector
 
 def pad_sequence(data, max_length):
     """

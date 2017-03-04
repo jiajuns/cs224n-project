@@ -25,11 +25,31 @@ def get_optimizer(opt):
     return optfn
 
 class Encoder(object):
-    def __init__(self, size, vocab_dim):
-        self.size = size
+    def __init__(self, hidden_size, max_context_len, max_question_len, vocab_dim):
+        self.hidden_size = hidden_size
         self.vocab_dim = vocab_dim
+        self.max_context_len = max_context_len
+        self.max_question_len = max_question_len
 
-    def encode(self, inputs, masks, encoder_state_input):
+    ## not ready
+    def LSTM(self, inputs, masks, length):
+        # Current data input shape: (batch_size, length, vocab_dim)
+        # Required shape: 'length' tensors list of shape (batch_size, n_input)
+        # Permuting batch_size and length
+        # inputs = tf.transpose(inputs, [1, 0, 2])
+        # # Reshaping to (length*batch_size, vocab_dim)
+        # inputs = tf.reshape(inputs, [-1, self.vocab_dim])
+        # # Split to get a list of 'length' tensors of shape (batch_size, n_input)
+        # inputs = tf.split(0, length, inputs)
+        # print(len(inputs))
+        # print(inputs[0])
+        #initial_state = tf.zeros_like((None, ))
+        lstm_cell = tf.nn.rnn_cell.BasicLSTMCell(self.hidden_size, forget_bias=1.0)
+        #seq_len = tf.reduce_sum(tf.cast(masks, tf.float32))
+        outputs, _ = tf.nn.dynamic_rnn(lstm_cell, inputs = inputs, dtype = tf.float32)
+        return outputs
+
+    def encode(self, context, question, context_mask, question_mask):
         """
         In a generalized encode function, you pass in your inputs,
         masks, and an initial
@@ -44,15 +64,17 @@ class Encoder(object):
                  It can be context-level representation, word-level representation,
                  or both.
         """
-
-        return
+        return self.LSTM(context, context_mask, self.max_context_len)
 
 
 class Decoder(object):
-    def __init__(self, output_size):
+    def __init__(self, hidden_size, max_context_len, max_question_len, output_size):
+        self.hidden_size = hidden_size
         self.output_size = output_size
+        self.max_context_len = max_context_len
+        self.max_question_len = max_question_len
 
-    def decode(self, knowledge_rep):
+    def decode(self, x):
         """
         takes in a knowledge representation
         and output a probability estimation over
@@ -64,11 +86,17 @@ class Decoder(object):
                               decided by how you choose to implement the encoder
         :return:
         """
-
-        return
+        with vs.variable_scope("decoder"):
+            U = tf.get_variable("U", shape = (self.hidden_size, self.output_size),
+                initializer=tf.contrib.layers.xavier_initializer())
+            b = tf.get_variable("b2", initializer = tf.zeros((self.output_size,)))
+            preds = tf.matmul(x[-1], U) + b
+            print(preds)
+            print(tf.reshape(preds, (-1, self.max_context_len, self.output_size)))
+        return preds
 
 class QASystem(object):
-    def __init__(self, encoder, decoder, *args):
+    def __init__(self, encoder, decoder, max_context_len, max_question_len, embeddings):
         """
         Initializes your System
 
@@ -76,37 +104,32 @@ class QASystem(object):
         :param decoder: a decoder that you constructed in train.py
         :param args: pass in more arguments as needed
         """
+        self.encoder = encoder
+        self.decoder = decoder
+        self.max_context_len = max_context_len
+        self.max_question_len = max_question_len
+        self.pretrained_embeddings = embeddings
+        self.vocab_dim = encoder.vocab_dim
+        self.n_class = 3  # 3 output class: start, end, null
 
         # ==== set up placeholder tokens ========
+        self.context_placeholder = tf.placeholder(tf.int32, shape=(None, max_context_len))
+        self.question_placeholder = tf.placeholder(tf.int32, shape = (None, max_question_len))
+        self.context_mask_placeholder = tf.placeholder(tf.bool, shape = (None, max_context_len))
+        self.question_mask_placeholder = tf.placeholder(tf.bool, shape = (None, max_question_len))
+        self.span_placeholder = tf.placeholder(tf.bool, shape = (None, max_context_len))
+        #self.dropout_placeholder = tf.placeholder(tf.float32, shape=(None))
+
 
 
         # ==== assemble pieces ====
         with tf.variable_scope("qa", initializer=tf.uniform_unit_scaling_initializer(1.0)):
-            self.setup_embeddings()
-            self.setup_system()
-            self.setup_loss()
+            context_embeddings, question_embeddings = self.setup_embeddings()
+            preds = self.setup_system(context_embeddings, question_embeddings)
+            self.loss = self.setup_loss(preds)
 
         # ==== set up training/updating procedure ====
         pass
-
-
-    def setup_system(self):
-        """
-        After your modularized implementation of encoder and decoder
-        you should call various functions inside encoder, decoder here
-        to assemble your reading comprehension system!
-        :return:
-        """
-        pass
-
-
-    def setup_loss(self):
-        """
-        Set up your loss computation here
-        :return:
-        """
-        with vs.variable_scope("loss"):
-            pass
 
     def setup_embeddings(self):
         """
@@ -114,20 +137,53 @@ class QASystem(object):
         :return:
         """
         with vs.variable_scope("embeddings"):
-            pass
+            vec_embeddings = tf.get_variable("embeddings", initializer=self.pretrained_embeddings)
+            context_batch_embeddings = tf.nn.embedding_lookup(vec_embeddings, self.context_placeholder)
+            question_batch_embeddings = tf.nn.embedding_lookup(vec_embeddings, self.question_placeholder)
+            context_embeddings = tf.reshape(context_batch_embeddings, 
+                    (-1, self.max_context_len, self.vocab_dim))
+            question_embeddings = tf.reshape(question_batch_embeddings, 
+                    (-1, self.max_question_len, self.vocab_dim))
+        return context_embeddings, question_embeddings
 
-    def optimize(self, session, train_x, train_y):
+    def setup_system(self, context_embeddings, question_embeddings):
+        """
+        After your modularized implementation of encoder and decoder
+        you should call various functions inside encoder, decoder here
+        to assemble your reading comprehension system!
+        :return:
+        """
+        encoded_layer = self.encoder.encode(context_embeddings, question_embeddings, 
+                        self.context_mask_placeholder, self.question_mask_placeholder)
+        preds = self.decoder.decode(encoded_layer)
+        return preds
+
+
+    def setup_loss(self, preds):
+        """
+        Set up your loss computation here
+        :return:
+        """
+        with vs.variable_scope("loss"):
+            masked_pred = tf.boolean_mask(preds, self.context_mask_placeholder)
+            masked_label = tf.boolean_mask(self.span_placeholder, self.context_mask_placeholder)
+            loss = tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(masked_pred, masked_label))
+        return loss
+
+    def optimize(self, session, context, question, context_mask, question_mask, span):
         """
         Takes in actual data to optimize your model
         This method is equivalent to a step() function
         :return:
         """
-        input_feed = {}
-
-        # fill in this feed_dictionary like:
-        # input_feed['train_x'] = train_x
-
-        output_feed = []
+        input_feed = {
+                    self.context_placeholder: context, 
+                    self.question_placeholder: question, 
+                    self.context_mask_placeholder: context_mask, 
+                    self.question_mask_placeholder: question_mask, 
+                    self.span_placeholder: span
+                    }
+        output_feed = [self.context_placeholder]
 
         outputs = session.run(output_feed, input_feed)
 
@@ -255,3 +311,5 @@ class QASystem(object):
         num_params = sum(map(lambda t: np.prod(tf.shape(t.value()).eval()), params))
         toc = time.time()
         logging.info("Number of params: %d (retreival took %f secs)" % (num_params, toc - tic))
+        print(dataset)
+
