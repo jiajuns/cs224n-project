@@ -23,11 +23,8 @@ class BiLSTM_Encoder(Encoder):
             outputs, _ = tf.nn.bidirectional_dynamic_rnn(
                 lstm_fw_cell, lstm_bw_cell, inputs = inputs, sequence_length = seq_len, dtype=tf.float32
             )
-            # outputs = tf.pack(outputs, axis=1)
-            outputs = tf.concat(2, outputs)
-            print('question_outputs_concat:', outputs)
-            final_hidden_output = outputs[:,-1,:]
-            print('final_hidden', final_hidden_output)
+            output = tf.concat(2, outputs)
+            final_hidden_output = tf.reshape(output[:, -1, :], (-1, 2 * self.hidden_size, 1))
         return final_hidden_output
 
     def Context_BiLSTM(self, inputs, masks, length):
@@ -38,21 +35,26 @@ class BiLSTM_Encoder(Encoder):
             outputs, _ = tf.nn.bidirectional_dynamic_rnn(
                 lstm_fw_cell, lstm_bw_cell, inputs = inputs, sequence_length = seq_len, dtype=tf.float32
             )
-            # outputs = tf.pack(outputs, axis=1)
-            outputs = tf.concat(2, outputs)
-            print('Context_outputs_packed', outputs)
-        return outputs
+            hidden_outputs = tf.concat(2, outputs)
+        return hidden_outputs
 
-    def attention(self, output_q, output_c):
+    def attention(self, y_q, y_c):
         with tf.variable_scope('attention') as scope:
             w_a = tf.get_variable("w_alpha", shape = (2 * self.hidden_size, 2 * self.hidden_size),
                 initializer=tf.contrib.layers.xavier_initializer())
-            alpha = tf.matmul(tf.matmul(output_c, w_a), tf.transpose(output_q))
+            #tf.get_variable_scope().reuse_variables()
+            y_c_reshape = tf.reshape(y_c, (-1, 2 * self.hidden_size))
+            temp_y = tf.reshape(tf.matmul(y_c_reshape, w_a), (-1, self.max_context_len, 2 * self.hidden_size))
+            alpha = tf.matmul(temp_y, y_q)
             normalised_alpha = tf.nn.softmax(alpha)
-            h_c = tf.matmul(tf.transpose(normalised_alpha), output_c)
-            w = tf.get_variable('w_attention', shape = (4 * self.hidden_size, self.hidden_size),
+            c_t = tf.matmul(tf.reshape(normalised_alpha, [-1, 1, self.max_context_len]), y_c)
+            print(c_t)
+            w_attention = tf.get_variable('w_attention', shape = (4 * self.hidden_size, self.hidden_size),
                 initializer=tf.contrib.layers.xavier_initializer())
-        return tf.matmul(tf.stack([h_c, output_q]), w)
+            test = tf.stack([c_t, tf.reshape(y_q, (-1, 1, 2 * self.hidden_size))])
+            print(test)
+            attention_hidden_outputs = tf.matmul(test, w_attention)
+        return 
 
     def encode(self, context, question, context_mask, question_mask):
         """

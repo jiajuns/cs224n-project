@@ -31,23 +31,22 @@ class Encoder(object):
         self.max_context_len = max_context_len
         self.max_question_len = max_question_len
 
-    ## not ready
-    def LSTM(self, inputs, masks, length):
-        # Current data input shape: (batch_size, length, vocab_dim)
-        # Required shape: 'length' tensors list of shape (batch_size, n_input)
-        # Permuting batch_size and length
-        # inputs = tf.transpose(inputs, [1, 0, 2])
-        # # Reshaping to (length*batch_size, vocab_dim)
-        # inputs = tf.reshape(inputs, [-1, self.vocab_dim])
-        # # Split to get a list of 'length' tensors of shape (batch_size, n_input)
-        # inputs = tf.split(0, length, inputs)
-        # print(len(inputs))
-        # print(inputs[0])
-        #initial_state = tf.zeros_like((None, ))
-        lstm_cell = tf.nn.rnn_cell.BasicLSTMCell(self.hidden_size, forget_bias=1.0)
-        #seq_len = tf.reduce_sum(tf.cast(masks, tf.float32))
-        outputs, _ = tf.nn.dynamic_rnn(lstm_cell, inputs = inputs, dtype = tf.float32)
-        return outputs
+    # def LSTM(self, inputs, masks, length):
+    #     # Current data input shape: (batch_size, length, vocab_dim)
+    #     # Required shape: 'length' tensors list of shape (batch_size, n_input)
+    #     # Permuting batch_size and length
+    #     # inputs = tf.transpose(inputs, [1, 0, 2])
+    #     # # Reshaping to (length*batch_size, vocab_dim)
+    #     # inputs = tf.reshape(inputs, [-1, self.vocab_dim])
+    #     # # Split to get a list of 'length' tensors of shape (batch_size, n_input)
+    #     # inputs = tf.split(0, length, inputs)
+    #     # print(len(inputs))
+    #     # print(inputs[0])
+    #     #initial_state = tf.zeros_like((None, ))
+    #     lstm_cell = tf.nn.rnn_cell.BasicLSTMCell(self.hidden_size, forget_bias=1.0)
+    #     #seq_len = tf.reduce_sum(tf.cast(masks, tf.float32))
+    #     outputs, _ = tf.nn.dynamic_rnn(lstm_cell, inputs = inputs, dtype = tf.float32)
+    #     return outputs
 
     def encode(self, context, question, context_mask, question_mask):
         """
