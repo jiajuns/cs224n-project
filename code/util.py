@@ -26,7 +26,7 @@ def load_and_preprocess_data(data_dir, max_context_len = 2834, max_question_len 
     train_question_padded, train_question_mask = pad_sequence(train_question, max_question_len)
     train_span_processed = preprocess_span(train_span, train_context_padded)
     train_data = vectorize(train_context_padded, train_context_mask,
-                        train_question_padded, train_question_mask, train_span_processed)
+                        train_question_padded, train_question_mask, train_span_processed, train_span)
     logger.info("Done. Read %d sentences", len(train_data))
     # logger.info("Loading validation data...")
     # val_context = read_data_from_file(data_dir + '/val.ids.context')
@@ -36,7 +36,7 @@ def load_and_preprocess_data(data_dir, max_context_len = 2834, max_question_len 
     # val_question_padded, val_question_mask = pad_sequence(val_question, max_question_len)
     # val_span_processed = preprocess_span(val_span, val_context_padded)
     # val_data = vectorize(val_context_padded, val_context_mask,
-    #                     val_question_padded, val_question_mask, val_span_processed)
+    #                     val_question_padded, val_question_mask, val_span_processed, val_span)
     # logger.info("Done. Read %d sentences", len(val_data))
     # logger.info("Data Loaded. Took %d seconds", time.time()-start)
     return train_data,1
@@ -50,22 +50,21 @@ def read_data_from_file(dir):
             ret.append(ids_list)
     return ret
 
-def vectorize(context, context_mask, question, question_mask, span):
+def vectorize(context, context_mask, question, question_mask, span_sparse, span):
     '''
     Vectorize dataset into
     [(context1, context_mask1, quesiton1, question_mask1, span1),
     (context2, context_mask2, quesiton2, question_mask2, span2),...]
     '''
-    return list(zip(context, context_mask, question, question_mask, span))
+    return list(zip(context, context_mask, question, question_mask, span_sparse, span))
 
 def preprocess_span(span_vector, context):
     new_span_vector = []
     for i in xrange(len(span_vector)):
         new_span = [0] * len(context[i])
         if span_vector[i][0] < len(context[i]):
-            new_span[span_vector[i][0]] = 1
-        if span_vector[i][1] < len(context[i]):
-            new_span[span_vector[i][1]] = 2
+            for j in xrange(span_vector[i][0], min(span_vector[i][1] + 1, len(context[i]))):
+                new_span[j] = 1
         new_span_vector.append(new_span)
     return new_span_vector
 
@@ -244,6 +243,7 @@ def get_minibatches(data, minibatch_size, shuffle=True):
     data_size = len(data[0]) if list_data else len(data)
     indices = np.arange(data_size)
     if shuffle:
+        np.random.seed(1)
         np.random.shuffle(indices)
     for minibatch_start in np.arange(0, data_size, minibatch_size):
         minibatch_indices = indices[minibatch_start:minibatch_start + minibatch_size]

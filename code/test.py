@@ -1,0 +1,10 @@
+#(context, context_mask, question, question_mask, span)
+context = range(1, 3)
+context_mask = range(3, 6)
+question = range(6, 7)
+question_mask = range(7, 8)
+span = range(8, 11)
+print(context)
+a = (context, context_mask, question, question_mask, span)
+b = [a]
+print(zip(*b))
