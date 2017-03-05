@@ -100,7 +100,7 @@ class Decoder(object):
         return preds
 
 class QASystem(object):
-    def __init__(self, encoder, decoder, flags, embeddings):
+    def __init__(self, encoder, decoder, flags, embeddings, rev_vocab):
         """
         Initializes your System
 
@@ -117,7 +117,7 @@ class QASystem(object):
         self.lr = flags.learning_rate
         self.n_epoch = flags.epochs
         self.batch_size = flags.batch_size
-        self.n_class = 3  # 3 output class: start, end, null
+        self.rev_vocab = rev_vocab
 
         # ==== set up placeholder tokens ========
         self.context_placeholder = tf.placeholder(tf.int32, shape=(None, self.max_context_len))
@@ -174,18 +174,14 @@ class QASystem(object):
             loss = tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(masked_pred, masked_label))
         return loss, masked_pred
 
-    def create_feed_dict(self, train_batch, dropout=1):
-        """
-        train_batch has this format:
-        (context, context_mask, question, question_mask, span)
-        """
+    def create_feed_dict(self, train_batch, dropout=1, test_flag = False):
         feed_dict = {
             self.context_placeholder: train_batch[0],
             self.question_placeholder: train_batch[2],
             self.context_mask_placeholder: train_batch[1],
             self.question_mask_placeholder: train_batch[3],
         }
-        if len(train_batch) == 5:
+        if len(train_batch) == 6:
             feed_dict[self.span_placeholder] = train_batch[4]
         return feed_dict
 
@@ -201,6 +197,8 @@ class QASystem(object):
         return outputs
 
     def run_epoch(self, session, train_examples, dev_examples):
+        # train_examples, dev_examples
+        #     [(context, context_mask, question, question_mask, span_sparse, span_sparse)]
         prog = Progbar(target=int(len(train_examples) / self.batch_size))
         for i, batch in enumerate(minibatches(train_examples, self.batch_size)):
             outputs = self.optimize(session, batch)
@@ -238,18 +236,16 @@ class QASystem(object):
         input_feed = self.create_feed_dict(unzipped_dev_example)
         output_feed = [self.masked_pred]
         masked_pred = session.run(output_feed, input_feed)
-        yp = masked_pred[0, :, 1]
-        yp2 = masked_pred[0, :, 2]
-        return yp, yp2
+        #print(masked_pred)
+        yp = masked_pred[0]
+        return yp
 
     def answer(self, session, test_x):
 
-        yp, yp2 = self.decode(session, test_x)
-
-        a_s = np.argmax(yp, axis=1)
-        a_e = np.argmax(yp2, axis=1)
-
-        return (a_s, a_e)
+        yp = self.decode(session, test_x)
+        answer_index = np.argmax(yp, axis = 1)
+        #print(answer_index)
+        return answer_index
 
     def validate(self, sess, valid_dataset):
         """
@@ -265,7 +261,15 @@ class QASystem(object):
         """
         return self.test(sess, valid_dataset)
 
-    def evaluate_answer(self, session, dataset, sample=100, log=False):
+    def formulate_answer(self, context, rev_vocab, start, end):
+        answer = ''
+        for i in range(start, end+1):
+            answer +=  rev_vocab[context[i]]
+            answer += ' '
+        return answer
+
+
+    def evaluate_answer(self, session, dataset, rev_vocab, sample=100, log=False):
         """
         Evaluate the model's performance using the harmonic mean of F1 and Exact Match (EM)
         with the set of true answer labels
@@ -284,12 +288,23 @@ class QASystem(object):
         f1 = 0.
         em = 0.
 
+        for i in range(sample):
+            sample_dataset = [dataset[i]] ## batch size = 1, keep same format after indexing
+            (a_s, a_e) = self.answer(session, sample_dataset)
+
+            (a_s_true, a_e_true) = sample_dataset[0][5]
+            context = sample_dataset[0][0]
+            question = sample_dataset[0][2]
+            print(self.formulate_answer(question, rev_vocab, 0, len(question)))
+            predicted_answer = self.formulate_answer(context, rev_vocab, a_s, a_e)
+            print(a_s, a_e)
+            print("predicted answer: {}".format(predicted_answer))
+            true_answer = self.formulate_answer(context, rev_vocab, a_s_true, a_e_true)
+            print("true answer: {}".format(true_answer))
+            print(f1_score(predicted_answer, true_answer))
+            #print(exact_match_score(predicted_answer, true_answer))
         if log:
             logging.info("F1: {}, EM: {}, for {} samples".format(f1, em, sample))
-
-        for i in range(sample):
-            sample_dataset = dataset[i]
-            (a_s, a_e) = self.answer(session, sample_dataset)
 
         return f1, em
 
@@ -337,8 +352,7 @@ class QASystem(object):
             print("Epoch {:} out of {:}".format(epoch + 1, self.n_epoch))
             dev_score = self.run_epoch(session, train_examples, dev_examples)
             print("Dev Cost: {}".format(dev_score))
-            # for i in dev_examples:
-            #     a_s, a_e = self.answer(session, i)
+            f1, em = self.evaluate_answer(session, dev_examples, self.rev_vocab)
             if dev_score > best_score:
                 best_score = dev_score
                 print("New best dev score! Saving model in {}".format(train_dir))
