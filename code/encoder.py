@@ -48,10 +48,11 @@ class BiLSTM_Encoder(Encoder):
             alpha = tf.matmul(temp_y, y_q)
             normalised_alpha = tf.nn.softmax(alpha)
             c_t = tf.matmul(tf.reshape(normalised_alpha, [-1, 1, self.max_context_len]), y_c)
-            print(c_t)
             w_attention = tf.get_variable('w_attention', shape = (4 * self.hidden_size, self.hidden_size),
                 initializer=tf.contrib.layers.xavier_initializer())
-            test = tf.stack([c_t, tf.reshape(y_q, (-1, 1, 2 * self.hidden_size))])
+            print(c_t)
+            print(tf.reshape(y_q, (-1, 1, 2 * self.hidden_size)))
+            h_t_c = tf.concat(2, [c_t, tf.reshape(y_q, (-1, 1, 2 * self.hidden_size))])
             print(test)
             attention_hidden_outputs = tf.matmul(test, w_attention)
         return 
