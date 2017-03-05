@@ -12,26 +12,35 @@ logging.basicConfig(level=logging.INFO)
 
 class BiLSTM_Encoder(Encoder):
 
-    def _LSTM_cell(self):
-        return tf.nn.rnn_cell.BasicLSTMCell(self.hidden_size, forget_bias=1.0)
+    def _LSTM_cell(self, hidden_size):
+        return tf.nn.rnn_cell.BasicLSTMCell(hidden_size, forget_bias=1.0)
 
     def Question_BiLSTM(self, inputs, masks, length):
         with tf.variable_scope("Question_BiLSTM") as scope:
-            lstm_fw_cell = self._LSTM_cell()
-            lstm_bw_cell = self._LSTM_cell()
-            seq_len = tf.reduce_sum(tf.cast(masks, tf.float32))
+            lstm_fw_cell = self._LSTM_cell(self.hidden_size)
+            lstm_bw_cell = self._LSTM_cell(self.hidden_size)
+            seq_len = tf.reduce_sum(tf.cast(masks, tf.int32), axis=1)
             outputs, _ = tf.nn.bidirectional_dynamic_rnn(
                 lstm_fw_cell, lstm_bw_cell, inputs = inputs, sequence_length = seq_len, dtype=tf.float32
             )
-        return outputs
+            # outputs = tf.pack(outputs, axis=1)
+            outputs = tf.concat(2, outputs)
+            print('question_outputs_concat:', outputs)
+            final_hidden_output = outputs[:,-1,:]
+            print('final_hidden', final_hidden_output)
+        return final_hidden_output
 
     def Context_BiLSTM(self, inputs, masks, length):
         with tf.variable_scope("Context_BiLSTM") as scope:
-            lstm_fw_cell = self._LSTM_cell()
-            lstm_bw_cell = self._LSTM_cell()
-            outputs, _, _ = tf.contrib.rnn.static_bidirectional_rnn(
-                lstm_fw_cell, lstm_bw_cell, inputs = inputs, dtype=tf.float32
+            lstm_fw_cell = self._LSTM_cell(self.hidden_size)
+            lstm_bw_cell = self._LSTM_cell(self.hidden_size)
+            seq_len = tf.reduce_sum(tf.cast(masks, tf.int32), axis=1)
+            outputs, _ = tf.nn.bidirectional_dynamic_rnn(
+                lstm_fw_cell, lstm_bw_cell, inputs = inputs, sequence_length = seq_len, dtype=tf.float32
             )
+            # outputs = tf.pack(outputs, axis=1)
+            outputs = tf.concat(2, outputs)
+            print('Context_outputs_packed', outputs)
         return outputs
 
     def attention(self, output_q, output_c):
