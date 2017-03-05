@@ -56,7 +56,7 @@ def vectorize(context, context_mask, question, question_mask, span):
     [(context1, context_mask1, quesiton1, question_mask1, span1),
     (context2, context_mask2, quesiton2, question_mask2, span2),...]
     '''
-    return(zip(context, context_mask, question, question_mask, span))
+    return list(zip(context, context_mask, question, question_mask, span))
 
 def preprocess_span(span_vector, context):
     new_span_vector = []
@@ -96,9 +96,20 @@ def pad_sequence(data, max_length):
 def load_embeddings(dir):
     return np.load(dir)['glove']
 
-if __name__ == '__main__':
-    print("Testing")
-    load_and_preprocess_data('data/squad')
+def split_train_dev(data, split=0.9):
+    list_data = type(data) is list and (type(data[0]) is list or type(data[0]) is np.ndarray)
+    data_size = len(data[0]) if list_data else len(data)
+    indices = np.arange(data_size)
+    np.random.shuffle(indices)
+
+    train_len = int(data_size * split)
+    train_index = [indices[i] for i in xrange(train_len)]
+    dev_index = [indices[i] for i in xrange(train_len, data_size)]
+
+    train_data = data[train_index] if type(data) is np.ndarray else [data[i] for i in train_index]
+    dev_data = data[dev_index] if type(data) is np.ndarray else [data[i] for i in dev_index]
+
+    return train_data, dev_data
 
 class Progbar(object):
     """
@@ -248,4 +259,6 @@ def minibatches(data, batch_size, shuffle=True):
     batches = [np.array(col) for col in zip(*data)]
     return get_minibatches(batches, batch_size, shuffle)
 
-
+if __name__ == '__main__':
+    print("Testing")
+    load_and_preprocess_data('data/squad')

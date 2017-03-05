@@ -11,7 +11,7 @@ import tensorflow as tf
 from tensorflow.python.ops import variable_scope as vs
 
 from evaluate import exact_match_score, f1_score
-from util import Progbar, minibatches
+from util import Progbar, minibatches, split_train_dev
 
 logging.basicConfig(level=logging.INFO)
 
@@ -119,8 +119,6 @@ class QASystem(object):
         self.batch_size = flags.batch_size
         self.n_class = 3  # 3 output class: start, end, null
 
-        self.saver = tf.train.Saver()
-
         # ==== set up placeholder tokens ========
         self.context_placeholder = tf.placeholder(tf.int32, shape=(None, self.max_context_len))
         self.question_placeholder = tf.placeholder(tf.int32, shape = (None, self.max_question_len))
@@ -132,8 +130,8 @@ class QASystem(object):
         # ==== assemble pieces ====
         with tf.variable_scope("qa", initializer=tf.uniform_unit_scaling_initializer(1.0)):
             context_embeddings, question_embeddings = self.setup_embeddings()
-            preds = self.setup_system(context_embeddings, question_embeddings)
-            self.loss = self.setup_loss(preds)
+            self.preds = self.setup_system(context_embeddings, question_embeddings)
+            self.loss = self.setup_loss(self.preds)
 
         # ==== set up training/updating procedure ====
             self.train_op = tf.train.AdamOptimizer(self.lr).minimize(self.loss)
@@ -176,15 +174,20 @@ class QASystem(object):
             loss = tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(masked_pred, masked_label))
         return loss
 
-    def create_feed_dict(self, context, question, context_mask, question_mask, span=None, dropout=1):
+    def create_feed_dict(self, train_batch, dropout=1):
+        """
+        train_batch has this format:
+        (context, context_mask, question, question_mask, span)
+        """
+        unzipped_train_batch = list(zip(*train_batch))
         feed_dict = {
-            self.context_placeholder: context,
-            self.question_placeholder: question,
-            self.context_mask_placeholder: context_mask,
-            self.question_mask_placeholder: question_mask,
+            self.context_placeholder: unzipped_train_batch[0],
+            self.question_placeholder: unzipped_train_batch[2],
+            self.context_mask_placeholder: unzipped_train_batch[1],
+            self.question_mask_placeholder: unzipped_train_batch[3],
         }
-        if span is not None:
-            feed_dict[self.span_placeholder] = span
+        if len(unzipped_train_batch) == 5:
+            feed_dict[self.span_placeholder] = unzipped_train_batch[4]
         return feed_dict
 
     def optimize(self, session, train_batch):
@@ -193,25 +196,24 @@ class QASystem(object):
         This method is equivalent to a step() function
         :return:
         """
-        context, question, context_mask, question_mask, span = train_batch # have not finished yet
-        input_feed = self.create_feed_dict(context, question, context_mask, question_mask, span)
-        output_feed = [self.train_op, self.loss]
+        input_feed = self.create_feed_dict(train_batch)
+        output_feed = [self.train_op]
         outputs = session.run(output_feed, input_feed)
         return outputs
 
     def run_epoch(self, session, train_examples, dev_examples):
         prog = Progbar(target=1 + int(len(train_examples) / self.batch_size))
         for i, batch in enumerate(minibatches(train_examples, self.batch_size)):
-            outputs = self.optimize(session, *batch)
+            outputs = self.optimize(session, batch)
             prog.update(i + 1, [("train loss", outputs[1])])
             # if self.report: self.report.log_train_loss(loss)
         print("")
 
         logging.info("Evaluating on development data")
-        f1, em = self.evaluate_answer(session, dev_examples)
-        return f1
+        validate_cost = self.validate(session, dev_examples)
+        return validate_cost
 
-    def test(self, session, context, question, context_mask, question_mask, span):
+    def test(self, session, dev_example):
         """
         in here you should compute a cost for your validation set
         and tune your hyperparameters according to the validation set performance
@@ -219,38 +221,50 @@ class QASystem(object):
         """
 
         # fill in this feed_dictionary like:
-        input_feed = self.create_feed_dict(context, question, context_mask, question_mask)
-
-        output_feed = []
+        input_feed = self.create_feed_dict(dev_example)
+        output_feed = [self.train_op]
         outputs = session.run(output_feed, input_feed)
+        return outputs[1]
 
-        return outputs
+    # def decode(self, session, test_x):
+    #     """
+    #     Returns the probability distribution over different positions in the paragraph
+    #     so that other methods like self.answer() will be able to work properly
+    #     :return:
+    #     """
 
-    def decode(self, session, test_x):
-        """
-        Returns the probability distribution over different positions in the paragraph
-        so that other methods like self.answer() will be able to work properly
-        :return:
-        """
-        input_feed = {}
+    #     if inputs is None:
+    #     inputs = self.preprocess_sequence_data(self.helper.vectorize(inputs_raw))
 
-        # fill in this feed_dictionary like:
-        # input_feed['test_x'] = test_x
+    #     preds = []
+    #     prog = Progbar(target=1 + int(len(inputs) / self.config.batch_size))
+    #     for i, batch in enumerate(minibatches(inputs, self.config.batch_size, shuffle=False)):
+    #         # Ignore predict
+    #         batch = batch[:1] + batch[2:]
+    #         preds_ = self.predict_on_batch(sess, *batch)
+    #         preds += list(preds_)
+    #         prog.update(i + 1, [])
+    #     return self.consolidate_predictions(inputs_raw, inputs, preds)
 
-        output_feed = []
+    #     input_feed = {}
 
-        outputs = session.run(output_feed, input_feed)
+    #     # fill in this feed_dictionary like:
+    #     # input_feed['test_x'] = test_x
 
-        return outputs
+    #     output_feed = []
 
-    def answer(self, session, test_x):
+    #     outputs = session.run(output_feed, input_feed)
 
-        yp, yp2 = self.decode(session, test_x)
+    #     return outputs
 
-        a_s = np.argmax(yp, axis=1)
-        a_e = np.argmax(yp2, axis=1)
+    # def answer(self, session, test_x):
 
-        return (a_s, a_e)
+    #     yp, yp2 = self.decode(session, test_x)
+
+    #     a_s = np.argmax(yp, axis=1)
+    #     a_e = np.argmax(yp2, axis=1)
+
+    #     return (a_s, a_e)
 
     def validate(self, sess, valid_dataset):
         """
@@ -265,35 +279,36 @@ class QASystem(object):
         :return:
         """
         valid_cost = 0
+        valid_cost_list = self.test(sess, valid_dataset)
+        return np.mean(valid_cost_list)
 
-        for valid_x, valid_y in valid_dataset:
-            valid_cost = self.test(sess, valid_x, valid_y)
+    # def evaluate_answer(self, session, dataset, sample=100, log=False):
+    #     """
+    #     Evaluate the model's performance using the harmonic mean of F1 and Exact Match (EM)
+    #     with the set of true answer labels
 
-        return valid_cost
+    #     This step actually takes quite some time. So we can only sample 100 examples
+    #     from either training or testing set.
 
-    def evaluate_answer(self, session, dataset, sample=100, log=False):
-        """
-        Evaluate the model's performance using the harmonic mean of F1 and Exact Match (EM)
-        with the set of true answer labels
+    #     :param session: session should always be centrally managed in train.py
+    #     :param dataset: a representation of our data, in some implementations, you can
+    #                     pass in multiple components (arguments) of one dataset to this function
+    #     :param sample: how many examples in dataset we look at
+    #     :param log: whether we print to std out stream
+    #     :return:
+    #     """
 
-        This step actually takes quite some time. So we can only sample 100 examples
-        from either training or testing set.
+    #     f1 = 0.
+    #     em = 0.
 
-        :param session: session should always be centrally managed in train.py
-        :param dataset: a representation of our data, in some implementations, you can
-                        pass in multiple components (arguments) of one dataset to this function
-        :param sample: how many examples in dataset we look at
-        :param log: whether we print to std out stream
-        :return:
-        """
+    #     if log:
+    #         logging.info("F1: {}, EM: {}, for {} samples".format(f1, em, sample))
 
-        f1 = 0.
-        em = 0.
+    #     for i in range(sample):
+    #         sample_dataset = dataset[i]
+    #         (a_s, a_e) = self.answer(session, sample_dataset)
 
-        if log:
-            logging.info("F1: {}, EM: {}, for {} samples".format(f1, em, sample))
-
-        return f1, em
+    #     return f1, em
 
     def train(self, session, dataset, train_dir):
         """
@@ -331,12 +346,12 @@ class QASystem(object):
         toc = time.time()
         logging.info("Number of params: %d (retreival took %f secs)" % (num_params, toc - tic))
 
-
-        train_examples, dev_examples = split_data(dataset)
+        self.saver = tf.train.Saver()
+        train_examples, dev_examples = split_train_dev(dataset)
 
         best_score = 0
         for epoch in range(self.n_epoch):
-            print("Epoch {:} out of {:}".format(epoch + 1, self.n_ßepoch))
+            print("Epoch {:} out of {:}".format(epoch + 1, self.n_epoch))
             dev_score = self.run_epoch(session, train_examples, dev_examples)
             if dev_score > best_score:
                 best_score = dev_score
