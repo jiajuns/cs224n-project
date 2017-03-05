@@ -62,11 +62,10 @@ def preprocess_span(span_vector, context):
     new_span_vector = []
     for i in xrange(len(span_vector)):
         new_span = [0] * len(context[i])
-        try:
+        if span_vector[i][0] < len(context[i]):
             new_span[span_vector[i][0]] = 1
-        except:
-            print(i, span_vector[i], len(span_vector), len(context[i]))
-        new_span[span_vector[i][1]] = 2
+        if span_vector[i][1] < len(context[i]):
+            new_span[span_vector[i][1]] = 2
         new_span_vector.append(new_span)
     return new_span_vector
 

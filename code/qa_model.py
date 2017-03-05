@@ -179,15 +179,14 @@ class QASystem(object):
         train_batch has this format:
         (context, context_mask, question, question_mask, span)
         """
-        unzipped_train_batch = list(zip(*train_batch))
         feed_dict = {
-            self.context_placeholder: unzipped_train_batch[0],
-            self.question_placeholder: unzipped_train_batch[2],
-            self.context_mask_placeholder: unzipped_train_batch[1],
-            self.question_mask_placeholder: unzipped_train_batch[3],
+            self.context_placeholder: train_batch[0],
+            self.question_placeholder: train_batch[2],
+            self.context_mask_placeholder: train_batch[1],
+            self.question_mask_placeholder: train_batch[3],
         }
-        if len(unzipped_train_batch) == 5:
-            feed_dict[self.span_placeholder] = unzipped_train_batch[4]
+        if len(train_batch) == 5:
+            feed_dict[self.span_placeholder] = train_batch[4]
         return feed_dict
 
     def optimize(self, session, train_batch):
@@ -197,7 +196,7 @@ class QASystem(object):
         :return:
         """
         input_feed = self.create_feed_dict(train_batch)
-        output_feed = [self.train_op]
+        output_feed = [self.train_op, self.loss]
         outputs = session.run(output_feed, input_feed)
         return outputs
 
@@ -222,9 +221,9 @@ class QASystem(object):
 
         # fill in this feed_dictionary like:
         input_feed = self.create_feed_dict(dev_example)
-        output_feed = [self.train_op]
+        output_feed = [self.loss]
         outputs = session.run(output_feed, input_feed)
-        return outputs[1]
+        return outputs[0]
 
     # def decode(self, session, test_x):
     #     """
@@ -257,14 +256,14 @@ class QASystem(object):
 
     #     return outputs
 
-    # def answer(self, session, test_x):
+    def answer(self, session, test_x):
 
-    #     yp, yp2 = self.decode(session, test_x)
+        yp, yp2 = self.decode(session, test_x)
 
-    #     a_s = np.argmax(yp, axis=1)
-    #     a_e = np.argmax(yp2, axis=1)
+        a_s = np.argmax(yp, axis=1)
+        a_e = np.argmax(yp2, axis=1)
 
-    #     return (a_s, a_e)
+        return (a_s, a_e)
 
     def validate(self, sess, valid_dataset):
         """
@@ -278,9 +277,7 @@ class QASystem(object):
 
         :return:
         """
-        valid_cost = 0
-        valid_cost_list = self.test(sess, valid_dataset)
-        return np.mean(valid_cost_list)
+        return self.test(sess, valid_dataset)
 
     # def evaluate_answer(self, session, dataset, sample=100, log=False):
     #     """
