@@ -29,13 +29,11 @@ class Decoder(object):
         """
 
         """
-        h_hat ==> (batch_size,2h)
+        h_hat ==> (batch_size,1，2h)
         y_con ==> (batch_size,m,2h)
         """
 
-        preds = []
-
-        n_hidden_units = h_hat.shape[1]
+        n_hidden_units = h_hat.shape[2]
         lstm_cell = tf.nn.rnn_cell.BasicLSTMCell(n_hidden_units, forget_bias=1.0, state_is_tuple=True)
         outputs, final_state = tf.nn.dynamic_rnn(lstm_cell, y_con, initial_state=h_hat, time_major=False)
 
