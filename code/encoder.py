@@ -42,20 +42,23 @@ class BiLSTM_Encoder(Encoder):
         with tf.variable_scope('attention') as scope:
             w_a = tf.get_variable("w_alpha", shape = (2 * self.hidden_size, 2 * self.hidden_size),
                 initializer=tf.contrib.layers.xavier_initializer())
-            #tf.get_variable_scope().reuse_variables()
-            y_c_reshape = tf.reshape(y_c, (-1, 2 * self.hidden_size))
-            temp_y = tf.reshape(tf.matmul(y_c_reshape, w_a), (-1, self.max_context_len, 2 * self.hidden_size))
-            alpha = tf.matmul(temp_y, y_q)
-            normalised_alpha = tf.nn.softmax(alpha)
-            c_t = tf.matmul(tf.reshape(normalised_alpha, [-1, 1, self.max_context_len]), y_c)
-            w_attention = tf.get_variable('w_attention', shape = (4 * self.hidden_size, self.hidden_size),
+
+            y_c_reshape = tf.reshape(y_c, shape=(-1, 2 * self.hidden_size))
+            temp_y = tf.reshape(
+                tf.matmul(y_c_reshape, w_a),
+                shape=(-1, self.max_context_len, 2 * self.hidden_size)
+            )                                                                                               # (?m, 2h) * (2h, 2h) -> (?, m, 2h)
+            alpha = tf.matmul(temp_y, y_q)                                                                  # (?, m, 2h) * (?, 2h, 1) -> (?, m)
+            normalised_alpha = tf.reshape(tf.nn.softmax(alpha), shape=(-1, 1, self.max_context_len))        # (?, 1, m)
+            c_t = tf.matmul(normalised_alpha, y_c)                                                          # (?, 1, m) * (?, m, 2h) -> (?, 2h)
+
+            w_attention = tf.get_variable('w_attention', shape=(4 * self.hidden_size, self.hidden_size),
                 initializer=tf.contrib.layers.xavier_initializer())
-            print(c_t)
-            print(tf.reshape(y_q, (-1, 1, 2 * self.hidden_size)))
-            h_t_c = tf.concat(2, [c_t, tf.reshape(y_q, (-1, 1, 2 * self.hidden_size))])
-            print(test)
-            attention_hidden_outputs = tf.matmul(test, w_attention)
-        return 
+            h_combined_3d = tf.concat(2, [c_t, tf.reshape(y_q, (-1, 1, 2 * self.hidden_size))])             # (?, 1, 2h) and (?, 1, 2h) -> (?, 1, 4h)
+            h_combined_2d = tf.reshape(h_combined_3d, shape=(-1, 4 * self.hidden_size))
+
+            attention_hidden_outputs = tf.matmul(h_combined_2d, w_attention)
+        return attention_hidden_outputs
 
     def encode(self, context, question, context_mask, question_mask):
         """
