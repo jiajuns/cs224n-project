@@ -77,7 +77,7 @@ class BiLSTM_Encoder(Encoder):
         """
         yq = self.Question_BiLSTM(question, question_mask, self.max_question_len)
         yc = self.Context_BiLSTM(context, context_mask, self.max_context_len)
-        return self.attention(yq, yc)
+        return yq, yc, self.attention(yq, yc)
 
 
 class Dummy_Encoder(Encoder):

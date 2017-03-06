@@ -157,9 +157,9 @@ class QASystem(object):
         to assemble your reading comprehension system!
         :return:
         """
-        encoded_layer = self.encoder.encode(context_embeddings, question_embeddings,
+        yq, yc, attention = self.encoder.encode(context_embeddings, question_embeddings,
                         self.context_mask_placeholder, self.question_mask_placeholder)
-        preds = self.decoder.decode(encoded_layer)
+        preds = self.decoder.decode(yc, attention)
         return preds
 
     def setup_loss(self, preds):
@@ -223,7 +223,7 @@ class QASystem(object):
         outputs = session.run(output_feed, input_feed)
         return outputs[0]
 
-    
+
     ###### Under Work! ##########
     def decode(self, session, dev_example):
         """
