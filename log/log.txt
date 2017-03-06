@@ -242,3 +242,6 @@ Created model with fresh parameters.
 Num params: 11802502
 Number of params: 11802502 (retreival took 1.127704 secs)
 Evaluating on development data
+Created model with fresh parameters.
+Num params: 13485300
+Number of params: 13485300 (retreival took 1.775081 secs)
