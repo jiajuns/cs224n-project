@@ -26,7 +26,8 @@ def load_and_preprocess_data(data_dir, max_context_len = 2834, max_question_len 
     train_question_padded, train_question_mask = pad_sequence(train_question, max_question_len)
     start_span_vector, end_span_vector = preprocess_span(train_span, train_context_padded)
     train_data = vectorize(train_context_padded, train_context_mask,
-                        train_question_padded, train_question_mask, start_span_vector, end_span_vector, train_span)
+                        train_question_padded, train_question_mask, 
+                        start_span_vector, end_span_vector, train_span)
     logger.info("Done. Read %d sentences", len(train_data))
     # logger.info("Loading validation data...")
     # val_context = read_data_from_file(data_dir + '/val.ids.context')
@@ -67,7 +68,7 @@ def preprocess_span(span_vector, context):
         if span_vector[i][0] < len(context[i]):
                 start_span[span_vector[i][0]] = 1
         if span_vector[i][1] < len(context[i]):
-                end_span[span_vector[i][0]] = 1
+                end_span[span_vector[i][1]] = 1
         start_span_vector.append(start_span)
         end_span_vector.append(end_span)
     return start_span_vector, end_span_vector

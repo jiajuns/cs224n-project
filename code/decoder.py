@@ -39,7 +39,7 @@ class Decoder(object):
 class LSTM_Decorder(Decoder):
 
     def LSTM(self, inputs):
-        lstm_cell = tf.nn.rnn_cell.BasicLSTMCell(self.hidden_size, forget_bias=1.0)
+        lstm_cell = tf.nn.rnn_cell.BasicLSTMCell(2 * self.hidden_size, forget_bias=1.0)
         outputs, _ = tf.nn.dynamic_rnn(lstm_cell, inputs = inputs, dtype = tf.float32)
         return outputs
 

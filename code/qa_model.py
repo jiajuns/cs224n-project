@@ -123,14 +123,15 @@ class QASystem(object):
         self.question_placeholder = tf.placeholder(tf.int32, shape = (None, self.max_question_len))
         self.context_mask_placeholder = tf.placeholder(tf.bool, shape = (None, self.max_context_len))
         self.question_mask_placeholder = tf.placeholder(tf.bool, shape = (None, self.max_question_len))
-        self.span_placeholder = tf.placeholder(tf.int32, shape = (None, self.max_context_len))
+        self.start_span_placeholder = tf.placeholder(tf.int32, shape = (None, self.max_context_len))
+        self.end_span_placeholder = tf.placeholder(tf.int32, shape = (None, self.max_context_len))
         self.dropout_placeholder = tf.placeholder(tf.float32, shape=(None))
 
         # ==== assemble pieces ====
         with tf.variable_scope("qa", initializer=tf.uniform_unit_scaling_initializer(1.0)):
             context_embeddings, question_embeddings = self.setup_embeddings()
-            self.preds = self.setup_system(context_embeddings, question_embeddings)
-            self.loss, self.masked_pred = self.setup_loss(self.preds)
+            self.h_s,self.h_e = self.setup_system(context_embeddings, question_embeddings)
+            self.loss, self.masked_h_s,self.masked_h_e = self.setup_loss(self.h_s,self.h_e)
 
         # ==== set up training/updating procedure ====
             self.train_op = tf.train.AdamOptimizer(self.lr).minimize(self.loss)
@@ -159,19 +160,24 @@ class QASystem(object):
         """
         yq, yc, attention = self.encoder.encode(context_embeddings, question_embeddings,
                         self.context_mask_placeholder, self.question_mask_placeholder)
-        preds = self.decoder.decode(yc, attention)
-        return preds
+        h_s, h_e = self.decoder.decode(yc, attention)
+        return h_s, h_e
 
-    def setup_loss(self, preds):
+    def setup_loss(self, h_s, h_e):
         """
         Set up your loss computation here
         :return:
         """
         with vs.variable_scope("loss"):
-            masked_pred = tf.boolean_mask(preds, self.context_mask_placeholder)
-            masked_label = tf.boolean_mask(self.span_placeholder, self.context_mask_placeholder)
-            loss = tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(masked_pred, masked_label))
-        return loss, masked_pred
+            print(h_s)
+            print(self.context_mask_placeholder)
+            masked_h_s = tf.boolean_mask(h_s, self.context_mask_placeholder)
+            masked_h_e = tf.boolean_mask(h_e, self.context_mask_placeholder)
+            start_span = tf.boolean_mask(self.start_span_placeholder, self.context_mask_placeholder)
+            end_span = tf.boolean_mask(self.end_span_placeholder, self.context_mask_placeholder)
+            loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(masked_h_s, start_span)) + \
+                tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(masked_h_e, end_span))
+        return loss, masked_h_s, masked_h_e
 
     def create_feed_dict(self, train_batch, dropout=1, test_flag = False):
         feed_dict = {
@@ -180,8 +186,9 @@ class QASystem(object):
             self.context_mask_placeholder: train_batch[1],
             self.question_mask_placeholder: train_batch[3],
         }
-        if len(train_batch) == 6:
-            feed_dict[self.span_placeholder] = train_batch[4]
+        if len(train_batch) == 7:
+            feed_dict[self.start_span_placeholder] = train_batch[4]
+            feed_dict[self.end_span_placeholder] = train_batch[5]
         return feed_dict
 
     def optimize(self, session, train_batch):
