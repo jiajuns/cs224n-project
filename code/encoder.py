@@ -52,12 +52,13 @@ class BiLSTM_Encoder(Encoder):
             normalised_alpha = tf.reshape(tf.nn.softmax(alpha), shape=(-1, 1, self.max_context_len))        # (?, 1, m)
             c_t = tf.matmul(normalised_alpha, y_c)                                                          # (?, 1, m) * (?, m, 2h) -> (?, 2h)
 
-            w_attention = tf.get_variable('w_attention', shape=(4 * self.hidden_size, self.hidden_size),
+            w_attention = tf.get_variable('w_attention', shape=(4 * self.hidden_size, 2 * self.hidden_size),
                 initializer=tf.contrib.layers.xavier_initializer())
             h_combined_3d = tf.concat(2, [c_t, tf.reshape(y_q, (-1, 1, 2 * self.hidden_size))])             # (?, 1, 2h) and (?, 1, 2h) -> (?, 1, 4h)
             h_combined_2d = tf.reshape(h_combined_3d, shape=(-1, 4 * self.hidden_size))
 
             attention_hidden_outputs = tf.matmul(h_combined_2d, w_attention)
+            attention_hidden_outputs = tf.reshape(attention_hidden_outputs, shape=(-1, 1, 2 * self.hidden_size))
         return attention_hidden_outputs
 
     def encode(self, context, question, context_mask, question_mask):

@@ -55,7 +55,25 @@ class LSTM_Decorder(Decoder):
                               decided by how you choose to implement the encoder
         :return:
         """
-        context_with_attention = attention * y_c
-        return self.LSTM(context_with_attention)
+        with vs.variable_scope('decode'):
+            context_with_attention = attention * y_c
+            h = self.LSTM(context_with_attention)     # (?, m, 2h)
+            h = tf.reshape(h, shape=(-1, 2 * self.hidden_size))
+
+            w_start = tf.get_variable('w_start', shape = (2 * self.hidden_size, 1),
+                initializer=tf.contrib.layers.xavier_initializer())
+            b_start = tf.get_variable('b_start', shape= (1))
+
+            w_end = tf.get_variable('w_end', shape = (2 * self.hidden_size, 1),
+                initializer=tf.contrib.layers.xavier_initializer())
+            b_end = tf.get_variable('b_end', shape= (1))
+
+            delta_start = tf.reshape(tf.matmul(h, w_start), shape=(-1, self.max_context_len))
+            delta_end = tf.reshape(tf.matmul(h, w_start), shape=(-1, self.max_context_len))
+
+            h_start = tf.nn.tanh(delta_start + b_start)
+            h_end = tf.nn.tanh(delta_end + b_end)
+
+        return h_start, h_end
 
 
