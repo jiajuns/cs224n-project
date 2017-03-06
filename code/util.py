@@ -24,9 +24,9 @@ def load_and_preprocess_data(data_dir, max_context_len = 2834, max_question_len 
         train_span = read_data_from_file(data_dir + '/train.span')
     train_context_padded, train_context_mask = pad_sequence(train_context, max_context_len)
     train_question_padded, train_question_mask = pad_sequence(train_question, max_question_len)
-    train_span_processed = preprocess_span(train_span, train_context_padded)
+    start_span_vector, end_span_vector = preprocess_span(train_span, train_context_padded)
     train_data = vectorize(train_context_padded, train_context_mask,
-                        train_question_padded, train_question_mask, train_span_processed, train_span)
+                        train_question_padded, train_question_mask, start_span_vector, end_span_vector, train_span)
     logger.info("Done. Read %d sentences", len(train_data))
     # logger.info("Loading validation data...")
     # val_context = read_data_from_file(data_dir + '/val.ids.context')
@@ -50,23 +50,27 @@ def read_data_from_file(dir):
             ret.append(ids_list)
     return ret
 
-def vectorize(context, context_mask, question, question_mask, span_sparse, span):
+def vectorize(context, context_mask, question, question_mask, start_span, end_span, span):
     '''
     Vectorize dataset into
     [(context1, context_mask1, quesiton1, question_mask1, span1),
     (context2, context_mask2, quesiton2, question_mask2, span2),...]
     '''
-    return list(zip(context, context_mask, question, question_mask, span_sparse, span))
+    return list(zip(context, context_mask, question, question_mask, start_span, end_span, span))
 
 def preprocess_span(span_vector, context):
-    new_span_vector = []
+    start_span_vector = []
+    end_span_vector = []
     for i in xrange(len(span_vector)):
-        new_span = [0] * len(context[i])
+        start_span = [0] * len(context[i])
+        end_span = [0] * len(context[i])
         if span_vector[i][0] < len(context[i]):
-            for j in xrange(span_vector[i][0], min(span_vector[i][1] + 1, len(context[i]))):
-                new_span[j] = 1
-        new_span_vector.append(new_span)
-    return new_span_vector
+                start_span[span_vector[i][0]] = 1
+        if span_vector[i][1] < len(context[i]):
+                end_span[span_vector[i][0]] = 1
+        start_span_vector.append(start_span)
+        end_span_vector.append(end_span)
+    return start_span_vector, end_span_vector
 
 def pad_sequence(data, max_length):
     """
