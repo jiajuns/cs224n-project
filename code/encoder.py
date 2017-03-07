@@ -25,7 +25,7 @@ class BiLSTM_Encoder(Encoder):
             )
             output = tf.concat(2, outputs)
             final_hidden_output = tf.reshape(output[:, -1, :], (-1, 2 * self.hidden_size, 1))
-        return final_hidden_output
+        return final_hidden_output  #(?, 2h, 1)
 
     def Context_BiLSTM(self, inputs, masks, length):
         with tf.variable_scope("Context_BiLSTM") as scope:
@@ -35,8 +35,8 @@ class BiLSTM_Encoder(Encoder):
             outputs, _ = tf.nn.bidirectional_dynamic_rnn(
                 lstm_fw_cell, lstm_bw_cell, inputs = inputs, sequence_length = seq_len, dtype=tf.float32
             )
-            hidden_outputs = tf.concat(2, outputs)
-        return hidden_outputs
+            hidden_outputs = tf.concat(2, outputs)    
+        return hidden_outputs   # (?, m, 2h)
 
     def attention(self, y_q, y_c):
         with tf.variable_scope('attention') as scope:

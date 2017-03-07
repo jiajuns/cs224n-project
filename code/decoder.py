@@ -56,6 +56,8 @@ class LSTM_Decorder(Decoder):
         :return:
         """
         with vs.variable_scope('decode'):
+            # attention (?, 1, 2h) ? 
+            # y_c (?, m, 2h)
             context_with_attention = attention * y_c
             h = self.LSTM(context_with_attention)     # (?, m, 2h)
             h = tf.reshape(h, shape=(-1, 2 * self.hidden_size))
