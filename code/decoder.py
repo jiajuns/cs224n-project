@@ -73,7 +73,9 @@ class LSTM_Decorder(Decoder):
 
             h_start = tf.nn.tanh(delta_start + b_start)
             h_end = tf.nn.tanh(delta_end + b_end)
+            p_start = tf.nn.softmax(h_start)
+            p_end = tf.nn.softmax(h_end)
 
-        return h_start, h_end
+        return p_start, p_end
 
 

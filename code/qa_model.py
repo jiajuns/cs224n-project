@@ -169,14 +169,16 @@ class QASystem(object):
         :return:
         """
         with vs.variable_scope("loss"):
-            print(h_s)
-            print(self.context_mask_placeholder)
             masked_h_s = tf.boolean_mask(h_s, self.context_mask_placeholder)
             masked_h_e = tf.boolean_mask(h_e, self.context_mask_placeholder)
-            start_span = tf.boolean_mask(self.start_span_placeholder, self.context_mask_placeholder)
-            end_span = tf.boolean_mask(self.end_span_placeholder, self.context_mask_placeholder)
-            loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(masked_h_s, start_span)) + \
-                tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(masked_h_e, end_span))
+            # start_span = tf.boolean_mask(self.start_span_placeholder, self.context_mask_placeholder)
+            # end_span = tf.boolean_mask(self.end_span_placeholder, self.context_mask_placeholder)
+            start_span = tf.cast(tf.boolean_mask(self.start_span_placeholder, self.context_mask_placeholder), tf.float32)
+            end_span = tf.cast(tf.boolean_mask(self.end_span_placeholder, self.context_mask_placeholder), tf.float32)
+            loss = tf.reduce_mean(tf.nn.l2_loss(masked_h_s - start_span)) + \
+                tf.reduce_mean(tf.nn.l2_loss(masked_h_e - end_span))
+            # loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(masked_h_s, start_span)) + \
+            #     tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(masked_h_e, end_span))
         return loss, masked_h_s, masked_h_e
 
     def create_feed_dict(self, train_batch, dropout=1, test_flag = False):
@@ -240,18 +242,20 @@ class QASystem(object):
         """
         unzipped_dev_example = zip(*dev_example)
         input_feed = self.create_feed_dict(unzipped_dev_example)
-        output_feed = [self.masked_pred]
-        masked_pred = session.run(output_feed, input_feed)
-        #print(masked_pred)
-        yp = masked_pred[0]
-        return yp
+        output_feed = [self.h_s,self.h_e]
+        outputs = session.run(output_feed, input_feed)
+        h_s = outputs[0]
+        h_e = outputs[1]
+        return h_s, h_e
 
     def answer(self, session, test_x):
 
-        yp = self.decode(session, test_x)
-        answer_index = np.argmax(yp, axis = 1)
-        #print(answer_index)
-        return answer_index
+        h_s, h_e = self.decode(session, test_x)
+        a_s = np.argmax(h_s)
+        a_e = np.argmax(h_e)
+        if a_s > a_e:
+            return a_e, a_s
+        return a_s, a_e
 
     def validate(self, sess, valid_dataset):
         """
@@ -267,15 +271,20 @@ class QASystem(object):
         """
         return self.test(sess, valid_dataset)
 
-    def formulate_answer(self, context, rev_vocab, start, end):
+    def formulate_answer(self, context, rev_vocab, start, end, mask = None):
         answer = ''
-        for i in range(start, end+1):
-            answer +=  rev_vocab[context[i]]
-            answer += ' '
+        for i in range(start, end + 1):
+            if mask is None:
+                answer +=  rev_vocab[context[i]]
+                answer += ' '
+            else:
+                if mask[i]:
+                    answer +=  rev_vocab[context[i]]
+                    answer += ' '
         return answer
 
 
-    def evaluate_answer(self, session, dataset, rev_vocab, sample=100, log=False):
+    def evaluate_answer(self, session, dataset, rev_vocab, sample=10, log=False):
         """
         Evaluate the model's performance using the harmonic mean of F1 and Exact Match (EM)
         with the set of true answer labels
@@ -297,18 +306,22 @@ class QASystem(object):
         for i in range(sample):
             sample_dataset = [dataset[i]] ## batch size = 1, keep same format after indexing
             (a_s, a_e) = self.answer(session, sample_dataset)
-
-            (a_s_true, a_e_true) = sample_dataset[0][5]
+            print(a_s, a_e)
+            (a_s_true, a_e_true) = sample_dataset[0][6]
             context = sample_dataset[0][0]
             question = sample_dataset[0][2]
-            print(self.formulate_answer(question, rev_vocab, 0, len(question)))
+            question_mask = sample_dataset[0][3]
+            print(self.formulate_answer(question, rev_vocab, 0, len(question) - 1, mask = question_mask))
             predicted_answer = self.formulate_answer(context, rev_vocab, a_s, a_e)
-            print(a_s, a_e)
             print("predicted answer: {}".format(predicted_answer))
             true_answer = self.formulate_answer(context, rev_vocab, a_s_true, a_e_true)
             print("true answer: {}".format(true_answer))
-            print(f1_score(predicted_answer, true_answer))
-            #print(exact_match_score(predicted_answer, true_answer))
+            f1 += f1_score(predicted_answer, true_answer)
+            em = exact_match_score(predicted_answer, true_answer)
+            if em:
+                em += 1
+        f1 /= sample
+        em /= sample
         if log:
             logging.info("F1: {}, EM: {}, for {} samples".format(f1, em, sample))
 
@@ -358,7 +371,7 @@ class QASystem(object):
             print("Epoch {:} out of {:}".format(epoch + 1, self.n_epoch))
             dev_score = self.run_epoch(session, train_examples, dev_examples)
             print("Dev Cost: {}".format(dev_score))
-            f1, em = self.evaluate_answer(session, dev_examples, self.rev_vocab)
+            f1, em = self.evaluate_answer(session, dev_examples, self.rev_vocab, log = True)
             if dev_score > best_score:
                 best_score = dev_score
                 print("New best dev score! Saving model in {}".format(train_dir))
