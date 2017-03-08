@@ -62,6 +62,7 @@ class BiLSTM_Encoder():
             U = self.C2Q_attention(y_q, y_c, S)  # U = (?, 2h, m)
             # need to compute G
             G = tf.concat(1, [y_c, H, y_c * U, y_c * H])  # G = (?, 8h, m)
+            G = tf.transpose(G, perm=[0, 2, 1])
         return G
 
     def similarity(self, y_q, y_c):
@@ -81,11 +82,11 @@ class BiLSTM_Encoder():
 
             S_c = tf.matmul(tf.reshape(y_c_T, [-1, 2 * self.hidden_size]), w_s1)  # (?m, 2h) * (2h, 1) = (?m, 1)
             S_q = tf.matmul(tf.reshape(y_q_T, [-1, 2 * self.hidden_size]), w_s2)  # (?n, 2h) * (2h, 1) = (?n, 1)
-            S_c = tf.reshape(S_c, [-1, 1, self.max_context_len])                # (?, m, 1)
+            S_c = tf.reshape(S_c, [-1, self.max_context_len, 1])                # (?, m, 1)
             S_q = tf.reshape(S_q, [-1, self.max_question_len, 1])               # (?, n, 1)
 
             S_cov = tf.matmul(y_q_T, y_c * w_s3)  # (?, n, 2h) * [(?, 2h, m) o (1, 2h, 1)] = (?, n, m)
-            S = S_cov + tf.matmul(S_q, S_c)       # (?, n, m) + (?, n, 1) * (?, 1, m) = (?, n, m)
+            S = S_cov + tf.matmul(S_q, tf.transpose(S_c, perm=[0, 2, 1]))       # (?, n, m) + (?, n, 1) * (?, 1, m) = (?, n, m)
         return S
 
     def C2Q_attention(self, y_q, y_c, S):
