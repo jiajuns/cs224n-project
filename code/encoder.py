@@ -61,10 +61,6 @@ class BiLSTM_Encoder():
             H = self.Q2C_attention(y_q, y_c, S)  # H = (?, 2h, m)
             U = self.C2Q_attention(y_q, y_c, S)  # U = (?, 2h, m)
             # need to compute G
-            print('y_c', y_c)
-            print('U', U)
-            print(y_c * U)
-            print(y_c * H)
             G = tf.concat(1, [y_c, H, y_c * U, y_c * H])
         return G
 
@@ -87,6 +83,7 @@ class BiLSTM_Encoder():
             S_q = tf.matmul(tf.reshape(y_q_T, [-1, 2 * self.hidden_size]), w_s2)  # (?n, 2h) * (2h, 1) = (?n, 1)
             S_c = tf.reshape(S_c, [-1, self.max_context_len, 1])                # (?, m, 1)
             S_q = tf.reshape(S_q, [-1, self.max_question_len, 1])               # (?, n, 1)
+
             S_cov = tf.matmul(y_c_T * w_s3, y_q)                                # [(?, m, 2h) o (1, 1, 2h)] * (?, 2h, n) = (?, m, n)
             S = S_cov + tf.matmul(S_c, tf.transpose(S_q, perm=[0, 2, 1]))       # (?, m, n) + (?, m, 1) * (?, 1, n) = (?, m, n)
         return S
@@ -104,7 +101,7 @@ class BiLSTM_Encoder():
         # y_q: (?, 2h, n)
         # y_c: (?, 2h, m)
         # S: (?, m, n)
-        b = tf.nn.softmax(tf.reduce_max(S, axis = 2)) # b = (?, m, 1)
+        b = tf.nn.softmax(tf.reduce_max(S, axis=2)) # b = (?, m, 1)
         b = tf.reshape(b, [-1, self.max_context_len, 1])
         h = tf.matmul(y_c, b)  # (?, 2h, m) * (?, m, 1) = (?, 2h, 1)
         H = tf.tile(h, [1, 1, self.max_context_len])
@@ -125,8 +122,8 @@ class BiLSTM_Encoder():
                  It can be context-level representation, word-level representation,
                  or both.
         """
-        yq = self.BiLSTM(question, question_mask, self.max_question_len, 'question_BiLSTM') # (?, n, 2h)
-        yc = self.BiLSTM(context, context_mask, self.max_context_len, 'context_BiLSTM') # (?, m, 2h)
+        yq = self.BiLSTM(question, question_mask, self.max_question_len, 'question_BiLSTM') # (?, 2h, n)
+        yc = self.BiLSTM(context, context_mask, self.max_context_len, 'context_BiLSTM') # (?, 2h, m)
         return yq, yc, self.bi_attention(yq, yc)
 
 

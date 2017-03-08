@@ -8,7 +8,7 @@ import tensorflow as tf
 
 #from qa_model import Encoder, QASystem, Decoder
 from qa_model import QASystem
-from decoder import LSTM_Decorder as Decoder
+from decoder import BiLSTM_Decoder as Decoder
 from encoder import BiLSTM_Encoder as Encoder
 from os.path import join as pjoin
 from util import load_and_preprocess_data, load_embeddings
