@@ -27,7 +27,7 @@ class BiLSTM_Encoder():
             outputs, _ = tf.nn.bidirectional_dynamic_rnn(
                 lstm_fw_cell, lstm_bw_cell, inputs = inputs, sequence_length = seq_len, dtype=tf.float32
             )
-            hidden_outputs = tf.concat(2, outputs)    
+            hidden_outputs = tf.concat(1, outputs)    
         return hidden_outputs   
 
     # def attention(self, y_q, y_c):
@@ -53,7 +53,13 @@ class BiLSTM_Encoder():
     #         attention_hidden_outputs = tf.reshape(attention_hidden_outputs, shape=(-1, 1, 2 * self.hidden_size))
     #     return attention_hidden_outputs
     def bi_attention(self, y_q, y_c):
+        # y_q: (?, 2h, n)
+        # y_c: (?, 2h, m)
         # need to compute S first
+        # S: (?, m, n)
+        with tf.variable_scope('bi_attention') as scope:
+            w_a = tf.get_variable("w_alpha", shape = (2 * self.hidden_size, 2 * self.hidden_size),
+                initializer=tf.contrib.layers.xavier_initializer())
         h = self.Q2C_attention(y_q, y_c, S)
         u = self.C2Q_attention(y_q, y_c, S)
         # need to compute G
@@ -61,8 +67,9 @@ class BiLSTM_Encoder():
 
 
     def C2Q_attention(self, y_q, y_c, S):
-        # y_q: (?, n, 2h)
-        # y_c: (?, m, 2h)
+        # y_q: (?, 2h, n)
+        # y_c: (?, 2h, m)
+        # S: (?, m, n)
         with tf.variable_scope('attention') as scope:
             w_a = tf.get_variable("w_alpha", shape = (2 * self.hidden_size, 2 * self.hidden_size),
                 initializer=tf.contrib.layers.xavier_initializer())
@@ -70,9 +77,12 @@ class BiLSTM_Encoder():
         return c2q_att
 
     def Q2C_attention(self, y_q, y_c, S):
-        # y_q: (?, n, 2h)
-        # y_c: (?, m, 2h)
-            
+        # y_q: (?, 2h, n)
+        # y_c: (?, 2h, m)
+        # S: (?, m, n)
+        b = tf.nn.softmax(tf.reduce_max(S, axis = 1)) # (?, n)
+        b = tf.reshape()
+        h = tf.matmul()  # (?, n) * (?, n, 2h) 
         return q2c_att
 
     def encode(self, context, question, context_mask, question_mask):
