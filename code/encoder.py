@@ -60,9 +60,10 @@ class BiLSTM_Encoder():
         with tf.variable_scope('bi_attention') as scope:
             w_a = tf.get_variable("w_alpha", shape = (2 * self.hidden_size, 2 * self.hidden_size),
                 initializer=tf.contrib.layers.xavier_initializer())
-        h = self.Q2C_attention(y_q, y_c, S)
-        u = self.C2Q_attention(y_q, y_c, S)
+        H = self.Q2C_attention(y_q, y_c, S)  # H = (?, 2h, m)
+        U = self.C2Q_attention(y_q, y_c, S)  # U = (?, 2h, m)
         # need to compute G
+        G = tf.concat(1, [y_c, H, y_c * U, y_c * H])
         return G
 
 
@@ -74,16 +75,16 @@ class BiLSTM_Encoder():
             w_a = tf.get_variable("w_alpha", shape = (2 * self.hidden_size, 2 * self.hidden_size),
                 initializer=tf.contrib.layers.xavier_initializer())
 
-        return c2q_att
+        return U
 
     def Q2C_attention(self, y_q, y_c, S):
         # y_q: (?, 2h, n)
         # y_c: (?, 2h, m)
         # S: (?, m, n)
-        b = tf.nn.softmax(tf.reduce_max(S, axis = 1)) # (?, n)
-        b = tf.reshape()
-        h = tf.matmul()  # (?, n) * (?, n, 2h) 
-        return q2c_att
+        b = tf.nn.softmax(tf.reduce_max(S, axis = 2)) # b = (?, m, 1)
+        h = tf.matmul(y_c, b)  # (?, 2h, m) * (?, m, 1) = (?, 2h, 1)
+        H = tf.tile(h, [1, 1, self.max_context_len])
+        return H
 
     def encode(self, context, question, context_mask, question_mask):
         """
