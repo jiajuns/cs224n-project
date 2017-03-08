@@ -52,7 +52,15 @@ class BiLSTM_Encoder():
     #         attention_hidden_outputs = tf.matmul(h_combined_2d, w_attention)
     #         attention_hidden_outputs = tf.reshape(attention_hidden_outputs, shape=(-1, 1, 2 * self.hidden_size))
     #     return attention_hidden_outputs
-    def C2Q_attention(self, y_q, y_c):
+    def bi_attention(self, y_q, y_c):
+        # need to compute S first
+        h = self.Q2C_attention(y_q, y_c, S)
+        u = self.C2Q_attention(y_q, y_c, S)
+        # need to compute G
+        return G
+
+
+    def C2Q_attention(self, y_q, y_c, S):
         # y_q: (?, n, 2h)
         # y_c: (?, m, 2h)
         with tf.variable_scope('attention') as scope:
@@ -61,7 +69,7 @@ class BiLSTM_Encoder():
 
         return c2q_att
 
-    def Q2C_attention(self, y_q, y_c):
+    def Q2C_attention(self, y_q, y_c, S):
         # y_q: (?, n, 2h)
         # y_c: (?, m, 2h)
             
@@ -84,7 +92,7 @@ class BiLSTM_Encoder():
         """
         yq = self.BiLSTM(question, question_mask, self.max_question_len) # (?, n, 2h)
         yc = self.BiLSTM(context, context_mask, self.max_context_len) # (?, m, 2h)
-        return yq, yc, self.C2Q_attention(yq, yc), self.Q2C_attention(yq, yc)
+        return yq, yc, self.bi_attention(yq, yc)
 
 
 class Dummy_Encoder(object):
