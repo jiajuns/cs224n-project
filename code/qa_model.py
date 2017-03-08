@@ -97,14 +97,14 @@ class QASystem(object):
         with vs.variable_scope("loss"):
             masked_h_s = tf.boolean_mask(h_s, self.context_mask_placeholder)
             masked_h_e = tf.boolean_mask(h_e, self.context_mask_placeholder)
-            start_span = tf.boolean_mask(self.start_span_placeholder, self.context_mask_placeholder)
-            end_span = tf.boolean_mask(self.end_span_placeholder, self.context_mask_placeholder)
+            # start_span = tf.boolean_mask(self.start_span_placeholder, self.context_mask_placeholder)
+            # end_span = tf.boolean_mask(self.end_span_placeholder, self.context_mask_placeholder)
             # start_span = tf.cast(tf.boolean_mask(self.start_span_placeholder, self.context_mask_placeholder), tf.float32)
             # end_span = tf.cast(tf.boolean_mask(self.end_span_placeholder, self.context_mask_placeholder), tf.float32)
             # loss = tf.reduce_mean(tf.nn.l2_loss(masked_h_s - start_span)) + \
             #     tf.reduce_mean(tf.nn.l2_loss(masked_h_e - end_span))
-            loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(masked_h_s, start_span)) + \
-                tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(masked_h_e, end_span))
+            loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(h_s, self.start_span_placeholder) +
+                   tf.nn.softmax_cross_entropy_with_logits(h_e, self.end_span_placeholder))
         return loss, masked_h_s, masked_h_e
 
     def create_feed_dict(self, train_batch, dropout=1, test_flag = False):
