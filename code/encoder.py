@@ -18,10 +18,8 @@ class BiLSTM_Encoder():
 
     def BiLSTM(self, inputs, masks, length, scope_name, dropout):
         with tf.variable_scope(scope_name):
-            lstm_fw_cell = tf.nn.rnn_cell.BasicLSTMCell(self.hidden_size, forget_bias=1.0)
-            lstm_bw_cell = tf.nn.rnn_cell.BasicLSTMCell(self.hidden_size, forget_bias=1.0)
-            dropout_lstm_fw_cell = tf.nn.rnn_cell.DropoutWrapper(cell=lstm_fw_cell, output_keep_prob = dropout)
-            dropout_lstm_bw_cell = tf.nn.rnn_cell.DropoutWrapper(cell=lstm_bw_cell, output_keep_prob = dropout)
+            lstm_fw_cell = tf.nn.rnn_cell.DropoutWrapper(tf.nn.rnn_cell.BasicLSTMCell(self.hidden_size, forget_bias=1.0), output_keep_prob = dropout)
+            lstm_bw_cell = tf.nn.rnn_cell.DropoutWrapper(tf.nn.rnn_cell.BasicLSTMCell(self.hidden_size, forget_bias=1.0), output_keep_prob = dropout)
             seq_len = tf.reduce_sum(tf.cast(masks, tf.int32), axis=1)
             outputs, _ = tf.nn.bidirectional_dynamic_rnn(
                 lstm_fw_cell, lstm_bw_cell, inputs = inputs, sequence_length = seq_len, dtype=tf.float32
