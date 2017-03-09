@@ -296,8 +296,11 @@ class QASystem(object):
         for epoch in range(self.n_epoch):
             print("Epoch {:} out of {:}".format(epoch + 1, self.n_epoch))
             dev_score = self.run_epoch(session, train_examples, dev_examples)
-            print("Dev Cost: {}".format(dev_score))
+            logging.log("train F1 & EM")
+            f1, em = self.evaluate_answer(session, train_examples, self.rev_vocab, log = True)
+            logging.log("Dev F1 & EM")
             f1, em = self.evaluate_answer(session, dev_examples, self.rev_vocab, log = True)
+            logging.log("Dev Cost: {}".format(dev_score))
             if dev_score > best_score:
                 best_score = dev_score
                 print("New best dev score! Saving model in {}".format(train_dir))

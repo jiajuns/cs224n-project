@@ -44,7 +44,7 @@ def read_data_from_file(dir, debug = True):
             ids_list = [int(i) for i in line.strip().split(" ")]
             ret.append(ids_list)
             count += 1
-            if debug and count > 300:
+            if debug and count >= 1000:
                 break
     return ret
 
