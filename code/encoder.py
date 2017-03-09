@@ -83,6 +83,24 @@ class BiLSTM_Encoder():
         H = tf.tile(h, [1, 1, self.max_context_len])
         return H
 
+    def _cosine_similarity(self, Q, C):
+        # Q = (?, m, h)
+        # C = (?, n, h)
+        normed_Q = tf.nn.l2_normalize(Q, dim=-1)  # (?, m, h)
+        normed_C = tf.nn.l2_normalize(C, dim=-1)  # (?, n, h)
+        cosine_sim = tf.matmul(normed_Q, tf.transpose(normed_C, perm=[0, 2, 1]))
+        return cosine_sim  # (?, m, n)
+
+    def filter_layer(self, question, context):
+        with tf.variable_scope('similarity') as scope:
+            w_f = tf.get_variable('w_filter', shape=(self.max_question_len, 1),
+                initializer=tf.contrib.layers.xavier_initializer())
+            cosine_sim = self._cosine_similarity(question, context)       # (?, m, n)
+            cosine_sim_reshape = tf.reshape(cosine_sim, [-1, self.max_question_len])    # (?m, n)
+            relevence = tf.reshape(tf.matmul(cosine_sim_reshape, w_f), [-1, self.max_context_len, 1])    # (?m, n) * (n, 1) => (?m, 1) => (?, m, 1)
+            # relevence = tf.reduce_max(cosine_sim, axis=2, keep_dims=True) # (?, m, 1)
+        return context * relevence
+
     def encode(self, context, question, context_mask, question_mask, dropout):
         """
         In a generalized encode function, you pass in your inputs,
@@ -98,6 +116,7 @@ class BiLSTM_Encoder():
                  It can be context-level representation, word-level representation,
                  or both.
         """
+        filtered_question = self.filter_layer(question, context)
         yq = self.BiLSTM(question, question_mask, self.max_question_len, 'question_BiLSTM', dropout) # (?, 2h, n)
         yc = self.BiLSTM(context, context_mask, self.max_context_len, 'context_BiLSTM', dropout) # (?, 2h, m)
         return yq, yc, self.bi_attention(yq, yc)
