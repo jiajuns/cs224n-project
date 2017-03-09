@@ -14,7 +14,9 @@ import numpy as np
 from six.moves import xrange
 import tensorflow as tf
 
-from qa_model import Encoder, QASystem, Decoder
+from decoder import BiLSTM_Decoder as Decoder
+from encoder import BiLSTM_Encoder as Encoder
+from qa_model import QASystem
 from preprocessing.squad_preprocess import data_from_json, maybe_download, squad_base_url, \
     invert_map, tokenize, token_idx_map
 import qa_data
@@ -130,6 +132,13 @@ def generate_answers(sess, model, dataset, rev_vocab):
     :return:
     """
     answers = {}
+    context_data, question_data, question_uuid_data = dataset
+
+    for i in xrange(len(question_uuid_data)):
+
+        start,end = model.answer(sess, question_data[i]) # the second input maybe wrong
+        an = formulate_answer(context_data[i], rev_vocab, start, end, mask = None)
+        answers[question_uuid_data[i]] = an
 
     return answers
 
@@ -176,10 +185,11 @@ def main(_):
     # ========= Model-specific =========
     # You must change the following code to adjust to your model
 
-    encoder = Encoder(size=FLAGS.state_size, vocab_dim=FLAGS.embedding_size)
-    decoder = Decoder(output_size=FLAGS.output_size)
+    embedding = tf.constant(load_embeddings(embed_path), dtype = tf.float32)
+    encoder = Encoder(FLAGS.state_size, FLAGS.max_context_len, FLAGS.max_question_len, FLAGS.embedding_size)
+    decoder = Decoder(FLAGS.state_size, FLAGS.max_context_len, FLAGS.max_question_len, FLAGS.output_size)
 
-    qa = QASystem(encoder, decoder)
+    qa = QASystem(encoder, decoder, FLAGS, embedding, rev_vocab)
 
     with tf.Session() as sess:
         train_dir = get_normalized_train_dir(FLAGS.train_dir)
@@ -189,6 +199,8 @@ def main(_):
         # write to json file to root dir
         with io.open('dev-prediction.json', 'w', encoding='utf-8') as f:
             f.write(unicode(json.dumps(answers, ensure_ascii=False)))
+
+
 
 
 if __name__ == "__main__":
