@@ -43,7 +43,7 @@ class QASystem(object):
         self.n_epoch = flags.epochs
         self.batch_size = flags.batch_size
         self.rev_vocab = rev_vocab
-        self.dropout = flags.learning_rate
+        self.dropout = flags.dropout
 
         # ==== set up placeholder tokens ========
         self.context_placeholder = tf.placeholder(tf.int32, shape=(None, self.max_context_len))

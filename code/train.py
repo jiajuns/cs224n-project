@@ -19,6 +19,7 @@ logging.basicConfig(level=logging.INFO)
 tf.app.flags.DEFINE_float("learning_rate", 0.1, "Learning rate.")
 tf.app.flags.DEFINE_float("max_gradient_norm", 10.0, "Clip gradients to this norm.")
 tf.app.flags.DEFINE_float("dropout", 0.2, "Fraction of units randomly dropped on non-recurrent connections.")
+tf.app.flags.DEFINE_integer("train_size", 3000, "Size of the training data")
 tf.app.flags.DEFINE_integer("batch_size", 30, "Batch size to use during training.")
 tf.app.flags.DEFINE_integer("epochs", 10, "Number of epochs to train.")
 tf.app.flags.DEFINE_integer("state_size", 200, "Size of each model layer.")
@@ -81,7 +82,7 @@ def get_normalized_train_dir(train_dir):
 def main(_):
 
     # Do what you need to load datasets from FLAGS.data_dir
-    train_data, val_data = load_and_preprocess_data(FLAGS.data_dir, FLAGS.max_context_len, FLAGS.max_question_len, size = 1000)
+    train_data, val_data = load_and_preprocess_data(FLAGS.data_dir, FLAGS.max_context_len, FLAGS.max_question_len, size = FLAGS.train_size)
 
     embed_path = FLAGS.embed_path or pjoin("data", "squad", "glove.trimmed.{}.npz".format(FLAGS.embedding_size))
     vocab_path = FLAGS.vocab_path or pjoin(FLAGS.data_dir, "vocab.dat")
