@@ -140,26 +140,29 @@ class QASystem(object):
         for i, batch in enumerate(minibatches(train_examples, self.batch_size)):
             outputs = self.optimize(session, batch)
             prog.update(i + 1, [("train loss", outputs[1])])
-            # if self.report: self.report.log_train_loss(loss)
-        print("")
-
         logging.info("Evaluating on development data")
         validate_cost = self.test(session, dev_examples)
         return validate_cost
 
-    def test(self, session, dev_example):
+    def test(self, session, dev_examples):
         """
         in here you should compute a cost for your validation set
         and tune your hyperparameters according to the validation set performance
         :return:
         """
 
-        # fill in this feed_dictionary like:
-        unzipped_dev_example = zip(*dev_example)
-        input_feed = self.create_feed_dict(unzipped_dev_example, dropout = 1)
-        output_feed = [self.loss]
-        outputs = session.run(output_feed, input_feed)
-        return outputs[0]
+        num_batches = int(len(dev_examples) / self.batch_size)
+        prog = Progbar(target=num_batches)
+        total_cost = 0
+        for i, batch in enumerate(minibatches(dev_examples, self.batch_size)):
+            input_feed = self.create_feed_dict(batch, dropout = 1)
+            output_feed = [self.loss]
+            outputs = session.run(output_feed, input_feed)
+            prog.update(i + 1, [("dev loss", outputs[0])])
+            total_cost += outputs[0]
+        print("")
+
+        return total_cost/num_batches
 
 
     ###### Under Work! ##########
@@ -295,11 +298,11 @@ class QASystem(object):
         for epoch in range(self.n_epoch):
             print("Epoch {:} out of {:}".format(epoch + 1, self.n_epoch))
             dev_score = self.run_epoch(session, train_examples, dev_examples)
+            logging.info("Dev Cost: {}".format(dev_score))
             logging.info("train F1 & EM")
             f1, em = self.evaluate_answer(session, train_examples, self.rev_vocab, log = True)
             logging.info("Dev F1 & EM")
             f1, em = self.evaluate_answer(session, dev_examples, self.rev_vocab, log = True)
-            logging.info("Dev Cost: {}".format(dev_score))
             if dev_score > best_score:
                 best_score = dev_score
                 print("New best dev score! Saving model in {}".format(train_dir))
