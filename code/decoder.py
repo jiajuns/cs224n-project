@@ -94,7 +94,7 @@ class BiLSTM_Decoder(Decoder):
             hidden_outputs = tf.concat(2, outputs)
         return hidden_outputs
 
-    def output_layer(self, G, M):
+    def output_layer(self, G, M, dropout):
         # M (?, m, 2h)
         # the softmax part is implemented together with loss function
         with tf.variable_scope('output_layer'):
@@ -105,15 +105,17 @@ class BiLSTM_Decoder(Decoder):
 
             temp_1 = tf.concat(2, [G, M])  # (?, m, 10h)
             temp_1_reshape = tf.reshape(temp_1, shape=[-1, 10 * self.hidden_size])  # (?m, 10h)
-            h_1 = tf.reshape(tf.matmul(temp_1_reshape, w_1), [-1, self.max_context_len]) # (?m, 10h) * (10h, 1) -> (?m, 1) -> (?, m)
+            temp_1_reshape_o = tf.nn.dropout(temp_1_reshape, dropout)
+            h_1 = tf.reshape(tf.matmul(temp_1_reshape_o, w_1), [-1, self.max_context_len]) # (?m, 10h) * (10h, 1) -> (?m, 1) -> (?, m)
 
             temp_2 = tf.concat(2, [G, M])  # (?, m, 10h)
             temp_2_reshape = tf.reshape(temp_2, shape=[-1, 10 * self.hidden_size])  # (?m, 10h)
-            h_2 = tf.reshape(tf.matmul(temp_2_reshape, w_2), [-1, self.max_context_len]) # (?m, 10h) * (10h, 1) -> (?m, 1) -> (?, m)
+            temp_1_reshape_o = tf.nn.dropout(temp_1_reshape, dropout)
+            h_2 = tf.reshape(tf.matmul(temp_1_reshape_o, w_2), [-1, self.max_context_len]) # (?m, 10h) * (10h, 1) -> (?m, 1) -> (?, m)
 
             return h_1, h_2
 
     def decode(self, context_mask, dropout, G):
         M = self.model_layer(context_mask, dropout, G)
-        h1, h2 = self.output_layer(G, M)
+        h1, h2 = self.output_layer(G, M, dropout)
         return h1, h2
