@@ -170,7 +170,7 @@ class QASystem(object):
         :return:
         """
         unzipped_dev_example = zip(*dev_example)
-        input_feed = self.create_feed_dict(unzipped_dev_example)
+        input_feed = self.create_feed_dict(unzipped_dev_example, dropout = 1)
         output_feed = [self.h_s,self.h_e]
         outputs = session.run(output_feed, input_feed)
         h_s = outputs[0]
