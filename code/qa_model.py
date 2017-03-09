@@ -210,7 +210,7 @@ class QASystem(object):
         return answer
 
 
-    def evaluate_answer(self, session, dataset, rev_vocab, sample=10, log=False):
+    def evaluate_answer(self, session, dataset, rev_vocab, sample=100, log=False):
         """
         Evaluate the model's performance using the harmonic mean of F1 and Exact Match (EM)
         with the set of true answer labels
@@ -232,16 +232,12 @@ class QASystem(object):
         for i in range(sample):
             sample_dataset = [dataset[i]] ## batch size = 1, keep same format after indexing
             (a_s, a_e) = self.answer(session, sample_dataset)
-            print(a_s, a_e)
             (a_s_true, a_e_true) = sample_dataset[0][6]
             context = sample_dataset[0][0]
             question = sample_dataset[0][2]
             question_mask = sample_dataset[0][3]
-            print(self.formulate_answer(question, rev_vocab, 0, len(question) - 1, mask = question_mask))
             predicted_answer = self.formulate_answer(context, rev_vocab, a_s, a_e)
-            print("predicted answer: {}".format(predicted_answer))
             true_answer = self.formulate_answer(context, rev_vocab, a_s_true, a_e_true)
-            print("true answer: {}".format(true_answer))
             f1 += f1_score(predicted_answer, true_answer)
             em = exact_match_score(predicted_answer, true_answer)
             if em:
@@ -296,11 +292,11 @@ class QASystem(object):
         for epoch in range(self.n_epoch):
             print("Epoch {:} out of {:}".format(epoch + 1, self.n_epoch))
             dev_score = self.run_epoch(session, train_examples, dev_examples)
-            logging.log("train F1 & EM")
+            logging.info("train F1 & EM")
             f1, em = self.evaluate_answer(session, train_examples, self.rev_vocab, log = True)
-            logging.log("Dev F1 & EM")
+            logging.info("Dev F1 & EM")
             f1, em = self.evaluate_answer(session, dev_examples, self.rev_vocab, log = True)
-            logging.log("Dev Cost: {}".format(dev_score))
+            logging.info("Dev Cost: {}".format(dev_score))
             if dev_score > best_score:
                 best_score = dev_score
                 print("New best dev score! Saving model in {}".format(train_dir))
