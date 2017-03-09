@@ -82,11 +82,11 @@ class LSTM_Decorder(Decoder):
 
 
 class BiLSTM_Decoder(Decoder):
-    def model_layer(self, context_mask, G):
+    def model_layer(self, context_mask, dropout, G):
         # G (?, m, 8h)
         with tf.variable_scope('model_layer'):
-            lstm_fw_cell = tf.nn.rnn_cell.BasicLSTMCell(self.hidden_size, forget_bias=1.0)
-            lstm_bw_cell = tf.nn.rnn_cell.BasicLSTMCell(self.hidden_size, forget_bias=1.0)
+            lstm_fw_cell = tf.nn.rnn_cell.DropoutWrapper(cell=tf.nn.rnn_cell.BasicLSTMCell(self.hidden_size, forget_bias=1.0), output_keep_prob=dropout)
+            lstm_bw_cell = tf.nn.rnn_cell.DropoutWrapper(cell=tf.nn.rnn_cell.BasicLSTMCell(self.hidden_size, forget_bias=1.0), output_keep_prob=dropout)
             seq_len = tf.reduce_sum(tf.cast(context_mask, tf.int32), axis=1)
             outputs, _ = tf.nn.bidirectional_dynamic_rnn(
                 lstm_fw_cell, lstm_bw_cell, inputs = G, sequence_length=seq_len, dtype=tf.float32
@@ -113,7 +113,7 @@ class BiLSTM_Decoder(Decoder):
 
             return h_1, h_2
 
-    def decode(self, context_mask, G):
-        M = self.model_layer(context_mask, G)
+    def decode(self, context_mask, dropout, G):
+        M = self.model_layer(context_mask, dropout, G)
         h1, h2 = self.output_layer(G, M)
         return h1, h2

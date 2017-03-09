@@ -87,7 +87,7 @@ class QASystem(object):
         yq, yc, attention = self.encoder.encode(context_embeddings, question_embeddings,
                         self.context_mask_placeholder, self.question_mask_placeholder,
                         self.dropout_placeholder)
-        h_s, h_e = self.decoder.decode(self.context_mask_placeholder, attention)
+        h_s, h_e = self.decoder.decode(self.context_mask_placeholder, self.dropout_placeholder, attention)
         return h_s, h_e
 
     def setup_loss(self, h_s, h_e):
