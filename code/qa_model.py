@@ -85,7 +85,8 @@ class QASystem(object):
         :return:
         """
         yq, yc, attention = self.encoder.encode(context_embeddings, question_embeddings,
-                        self.context_mask_placeholder, self.question_mask_placeholder)
+                        self.context_mask_placeholder, self.question_mask_placeholder,
+                        self.dropout_placeholder)
         h_s, h_e = self.decoder.decode(self.context_mask_placeholder, attention)
         return h_s, h_e
 
@@ -107,12 +108,13 @@ class QASystem(object):
                    tf.nn.softmax_cross_entropy_with_logits(h_e, self.end_span_placeholder))
         return loss, masked_h_s, masked_h_e
 
-    def create_feed_dict(self, train_batch, dropout=1, test_flag = False):
+    def create_feed_dict(self, train_batch, dropout=0.9):
         feed_dict = {
             self.context_placeholder: train_batch[0],
             self.question_placeholder: train_batch[2],
             self.context_mask_placeholder: train_batch[1],
             self.question_mask_placeholder: train_batch[3],
+            self.dropout_placeholder: dropout
         }
         if len(train_batch) == 7:
             feed_dict[self.start_span_placeholder] = train_batch[4]
@@ -153,7 +155,7 @@ class QASystem(object):
 
         # fill in this feed_dictionary like:
         unzipped_dev_example = zip(*dev_example)
-        input_feed = self.create_feed_dict(unzipped_dev_example)
+        input_feed = self.create_feed_dict(unzipped_dev_example, dropout = 1)
         output_feed = [self.loss]
         outputs = session.run(output_feed, input_feed)
         return outputs[0]

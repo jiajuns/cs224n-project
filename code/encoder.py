@@ -16,40 +16,18 @@ class BiLSTM_Encoder():
         self.max_context_len = max_context_len
         self.max_question_len = max_question_len
 
-    def BiLSTM(self, inputs, masks, length, scope_name):
+    def BiLSTM(self, inputs, masks, length, scope_name, dropout):
         with tf.variable_scope(scope_name):
             lstm_fw_cell = tf.nn.rnn_cell.BasicLSTMCell(self.hidden_size, forget_bias=1.0)
             lstm_bw_cell = tf.nn.rnn_cell.BasicLSTMCell(self.hidden_size, forget_bias=1.0)
+            dropout_lstm_fw_cell = tf.nn.rnn_cell.DropoutWrapper(cell=lstm_fw_cell, output_keep_prob = dropout)
+            dropout_lstm_bw_cell = tf.nn.rnn_cell.DropoutWrapper(cell=lstm_bw_cell, output_keep_prob = dropout)
             seq_len = tf.reduce_sum(tf.cast(masks, tf.int32), axis=1)
             outputs, _ = tf.nn.bidirectional_dynamic_rnn(
                 lstm_fw_cell, lstm_bw_cell, inputs = inputs, sequence_length = seq_len, dtype=tf.float32
             )
-
             hidden_outputs = tf.transpose(tf.concat(2, outputs), perm=[0, 2, 1])
         return hidden_outputs
-
-    # def attention(self, y_q, y_c):
-    #     with tf.variable_scope('attention') as scope:
-    #         w_a = tf.get_variable("w_alpha", shape = (2 * self.hidden_size, 2 * self.hidden_size),
-    #             initializer=tf.contrib.layers.xavier_initializer())
-
-    #         y_c_reshape = tf.reshape(y_c, shape=(-1, 2 * self.hidden_size))
-    #         temp_y = tf.reshape(
-    #             tf.matmul(y_c_reshape, w_a),
-    #             shape=(-1, self.max_context_len, 2 * self.hidden_size)
-    #         )                                                                                               # (?m, 2h) * (2h, 2h) -> (?, m, 2h)
-    #         alpha = tf.matmul(temp_y, y_q)                                                                  # (?, m, 2h) * (?, 2h, 1) -> (?, m)
-    #         normalised_alpha = tf.reshape(tf.nn.softmax(alpha), shape=(-1, 1, self.max_context_len))        # (?, 1, m)
-    #         c_t = tf.matmul(normalised_alpha, y_c)                                                          # (?, 1, m) * (?, m, 2h) -> (?, 2h)
-
-    #         w_attention = tf.get_variable('w_attention', shape=(4 * self.hidden_size, 2 * self.hidden_size),
-    #             initializer=tf.contrib.layers.xavier_initializer())
-    #         h_combined_3d = tf.concat(2, [c_t, tf.reshape(y_q, (-1, 1, 2 * self.hidden_size))])             # (?, 1, 2h) and (?, 1, 2h) -> (?, 1, 4h)
-    #         h_combined_2d = tf.reshape(h_combined_3d, shape=(-1, 4 * self.hidden_size))
-
-    #         attention_hidden_outputs = tf.matmul(h_combined_2d, w_attention)
-    #         attention_hidden_outputs = tf.reshape(attention_hidden_outputs, shape=(-1, 1, 2 * self.hidden_size))
-    #     return attention_hidden_outputs
 
     def bi_attention(self, y_q, y_c):
         # y_q: (?, 2h, n)
@@ -107,7 +85,7 @@ class BiLSTM_Encoder():
         H = tf.tile(h, [1, 1, self.max_context_len])
         return H
 
-    def encode(self, context, question, context_mask, question_mask):
+    def encode(self, context, question, context_mask, question_mask, dropout):
         """
         In a generalized encode function, you pass in your inputs,
         masks, and an initial
@@ -122,8 +100,8 @@ class BiLSTM_Encoder():
                  It can be context-level representation, word-level representation,
                  or both.
         """
-        yq = self.BiLSTM(question, question_mask, self.max_question_len, 'question_BiLSTM') # (?, 2h, n)
-        yc = self.BiLSTM(context, context_mask, self.max_context_len, 'context_BiLSTM') # (?, 2h, m)
+        yq = self.BiLSTM(question, question_mask, self.max_question_len, 'question_BiLSTM', dropout) # (?, 2h, n)
+        yc = self.BiLSTM(context, context_mask, self.max_context_len, 'context_BiLSTM', dropout) # (?, 2h, m)
         return yq, yc, self.bi_attention(yq, yc)
 
 
