@@ -43,6 +43,7 @@ class QASystem(object):
         self.n_epoch = flags.epochs
         self.batch_size = flags.batch_size
         self.rev_vocab = rev_vocab
+        self.dropout = flags.learning_rate
 
         # ==== set up placeholder tokens ========
         self.context_placeholder = tf.placeholder(tf.int32, shape=(None, self.max_context_len))
@@ -108,7 +109,7 @@ class QASystem(object):
                    tf.nn.softmax_cross_entropy_with_logits(h_e, self.end_span_placeholder))
         return loss, masked_h_s, masked_h_e
 
-    def create_feed_dict(self, train_batch, dropout=0.9):
+    def create_feed_dict(self, train_batch, dropout):
         feed_dict = {
             self.context_placeholder: train_batch[0],
             self.question_placeholder: train_batch[2],
@@ -127,7 +128,7 @@ class QASystem(object):
         This method is equivalent to a step() function
         :return:
         """
-        input_feed = self.create_feed_dict(train_batch)
+        input_feed = self.create_feed_dict(train_batch, 1 - self.dropout)
         output_feed = [self.train_op, self.loss]
         outputs = session.run(output_feed, input_feed)
         return outputs

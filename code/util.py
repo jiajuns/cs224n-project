@@ -8,13 +8,13 @@ logger = logging.getLogger()
 logger.setLevel(logging.DEBUG)
 logging.basicConfig(format='%(levelname)s:%(message)s', level=logging.DEBUG)
 
-def load_and_preprocess_data(data_dir, max_context_len = 2834, max_question_len = 214, debug = True):
+def load_and_preprocess_data(data_dir, max_context_len = 2834, max_question_len = 214, size = None):
     """Utilities for loading and padding dataset"""
     start = time.time()
     logger.info("Loading training data...")
-    train_context = read_data_from_file(data_dir + '/train.ids.context', debug)
-    train_question = read_data_from_file(data_dir + '/train.ids.question', debug)
-    train_span = read_data_from_file(data_dir + '/train.span', debug)
+    train_context = read_data_from_file(data_dir + '/train.ids.context', size)
+    train_question = read_data_from_file(data_dir + '/train.ids.question', size)
+    train_span = read_data_from_file(data_dir + '/train.span', size)
     train_context_padded, train_context_mask = pad_sequence(train_context, max_context_len)
     train_question_padded, train_question_mask = pad_sequence(train_question, max_question_len)
     start_span_vector, end_span_vector = preprocess_span(train_span, train_context_padded)
@@ -36,7 +36,7 @@ def load_and_preprocess_data(data_dir, max_context_len = 2834, max_question_len 
     return train_data,1
     #return train_data, val_data
 
-def read_data_from_file(dir, debug = True):
+def read_data_from_file(dir, size):
     ret = []
     with open(dir, 'r') as file:
         count = 0
@@ -44,8 +44,9 @@ def read_data_from_file(dir, debug = True):
             ids_list = [int(i) for i in line.strip().split(" ")]
             ret.append(ids_list)
             count += 1
-            if debug and count >= 1000:
-                break
+            if size is not None:
+                if count >= size:
+                    break
     return ret
 
 def vectorize(context, context_mask, question, question_mask, start_span, end_span, span):
