@@ -9,17 +9,15 @@ logger = logging.getLogger()
 logger.setLevel(logging.DEBUG)
 logging.basicConfig(format='%(levelname)s:%(message)s', level=logging.DEBUG)
 
-def variable_summaries(var):
+def variable_summaries(var, name_scope, matrix = True):
   """Attach a lot of summaries to a Tensor (for TensorBoard visualization)."""
-  with tf.name_scope('summaries'):
+  
+  with tf.name_scope(name_scope):
     mean = tf.reduce_mean(var)
     tf.summary.scalar('mean', mean)
-    with tf.name_scope('stddev'):
-      stddev = tf.sqrt(tf.reduce_mean(tf.square(var - mean)))
-    tf.summary.scalar('stddev', stddev)
-    tf.summary.scalar('max', tf.reduce_max(var))
-    tf.summary.scalar('min', tf.reduce_min(var))
-    tf.summary.histogram('histogram', var)
+    if matrix:
+        norm = tf.sqrt(tf.reduce_sum(var * var))
+        tf.summary.scalar('norm', norm)
 
 def load_and_preprocess_data(data_dir, max_context_len = 2834, max_question_len = 214, size = None):
     """Utilities for loading and padding dataset"""

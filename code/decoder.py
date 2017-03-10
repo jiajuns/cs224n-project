@@ -105,8 +105,8 @@ class BiLSTM_Decoder(Decoder):
                 initializer=tf.contrib.layers.xavier_initializer())
 
             if self.summary_flag:
-                variable_summaries(w_1)
-                variable_summaries(w_2)
+                variable_summaries(w_1, "output_w_1")
+                variable_summaries(w_2, "output_w_2")
 
             temp_1 = tf.concat(2, [G, M])  # (?, m, 10h)
             temp_1_reshape = tf.reshape(temp_1, shape=[-1, 10 * self.hidden_size])  # (?m, 10h)

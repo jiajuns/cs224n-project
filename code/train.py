@@ -37,7 +37,7 @@ tf.app.flags.DEFINE_string("embed_path", "", "Path to the trimmed GLoVe embeddin
 tf.app.flags.DEFINE_integer("max_context_len", 300, "max length of the context input")
 tf.app.flags.DEFINE_integer("max_question_len", 100, "max length of the question input")
 tf.app.flags.DEFINE_string('summaries_dir', 'summary/', 'tensorboard summary dir')
-tf.app.flags.DEFINE_bool('summary_flag', False, 'if true log summary')
+tf.app.flags.DEFINE_bool('summary_flag', True, 'if true log summary')
 FLAGS = tf.app.flags.FLAGS
 
 
