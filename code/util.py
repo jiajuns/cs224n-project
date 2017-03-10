@@ -3,10 +3,23 @@ from six.moves import xrange  # for python 3 user
 import time, logging
 import sys
 import numpy as np
+import tensorflow as tf
 
 logger = logging.getLogger()
 logger.setLevel(logging.DEBUG)
 logging.basicConfig(format='%(levelname)s:%(message)s', level=logging.DEBUG)
+
+def variable_summaries(var):
+  """Attach a lot of summaries to a Tensor (for TensorBoard visualization)."""
+  with tf.name_scope('summaries'):
+    mean = tf.reduce_mean(var)
+    tf.summary.scalar('mean', mean)
+    with tf.name_scope('stddev'):
+      stddev = tf.sqrt(tf.reduce_mean(tf.square(var - mean)))
+    tf.summary.scalar('stddev', stddev)
+    tf.summary.scalar('max', tf.reduce_max(var))
+    tf.summary.scalar('min', tf.reduce_min(var))
+    tf.summary.histogram('histogram', var)
 
 def load_and_preprocess_data(data_dir, max_context_len = 2834, max_question_len = 214, size = None):
     """Utilities for loading and padding dataset"""
@@ -19,7 +32,7 @@ def load_and_preprocess_data(data_dir, max_context_len = 2834, max_question_len 
     train_question_padded, train_question_mask = pad_sequence(train_question, max_question_len)
     start_span_vector, end_span_vector = preprocess_span(train_span, train_context_padded)
     train_data = vectorize(train_context_padded, train_context_mask,
-                        train_question_padded, train_question_mask, 
+                        train_question_padded, train_question_mask,
                         start_span_vector, end_span_vector, train_span)
     logger.info("Done. Read %d sentences", len(train_data))
     # logger.info("Loading validation data...")

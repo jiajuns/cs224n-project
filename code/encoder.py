@@ -7,6 +7,8 @@ import logging
 import numpy as np
 import tensorflow as tf
 
+from util import variable_summaries
+
 logging.basicConfig(level=logging.INFO)
 
 class BiLSTM_Encoder():
@@ -76,6 +78,10 @@ class BiLSTM_Encoder():
             w_s3 = tf.get_variable('w_sim_3', shape=(2 * self.hidden_size, 1),
                 initializer=tf.contrib.layers.xavier_initializer())
 
+            variable_summaries(w_s1)
+            variable_summaries(w_s2)
+            variable_summaries(w_s3)
+
             H = tf.transpose(y_c, perm=[0, 2, 1]) # # H: (?, m, 2h)
             U = tf.transpose(y_q, perm=[0, 2, 1]) # U_T: (?, n, 2h)
 
@@ -119,6 +125,7 @@ class BiLSTM_Encoder():
         with tf.variable_scope('similarity') as scope:
             w_f = tf.get_variable('w_filter', shape=(self.max_question_len, 1),
                 initializer=tf.contrib.layers.xavier_initializer())
+            variable_summaries(w_f)
             cosine_sim = self._cosine_similarity(question, context)       # (?, m, n)
             cosine_sim_reshape = tf.reshape(cosine_sim, [-1, self.max_question_len])    # (?m, n)
             relevence = tf.reshape(tf.matmul(cosine_sim_reshape, w_f), [-1, self.max_context_len, 1])    # (?m, n) * (n, 1) => (?m, 1) => (?, m, 1)
@@ -140,9 +147,9 @@ class BiLSTM_Encoder():
                  It can be context-level representation, word-level representation,
                  or both.
         """
-        filtered_question = self.filter_layer(question, context)
+        filtered_context = self.filter_layer(question, context)
         yq = self.BiLSTM(question, question_mask, self.max_question_len, 'question_BiLSTM', dropout) # (?, 2h, n)
-        yc = self.BiLSTM(context, context_mask, self.max_context_len, 'context_BiLSTM', dropout) # (?, 2h, m)
+        yc = self.BiLSTM(filtered_context, context_mask, self.max_context_len, 'context_BiLSTM', dropout) # (?, 2h, m)
         return yq, yc, self.bi_attention(yq, yc)
 
 

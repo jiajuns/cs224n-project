@@ -11,7 +11,7 @@ import tensorflow as tf
 from tensorflow.python.ops import variable_scope as vs
 
 from evaluate import exact_match_score, f1_score
-from util import Progbar, minibatches, split_train_dev
+from util import Progbar, minibatches, split_train_dev, variable_summaries
 
 class Decoder(object):
     def __init__(self, hidden_size, max_context_len, max_question_len, output_size):
@@ -102,6 +102,9 @@ class BiLSTM_Decoder(Decoder):
                 initializer=tf.contrib.layers.xavier_initializer())
             w_2 = tf.get_variable('w_end', shape=(10 * self.hidden_size, 1),
                 initializer=tf.contrib.layers.xavier_initializer())
+
+            variable_summaries(w_1)
+            variable_summaries(w_2)
 
             temp_1 = tf.concat(2, [G, M])  # (?, m, 10h)
             temp_1_reshape = tf.reshape(temp_1, shape=[-1, 10 * self.hidden_size])  # (?m, 10h)
