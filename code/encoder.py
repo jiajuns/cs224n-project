@@ -36,7 +36,7 @@ class BiLSTM_Encoder():
         # need to compute S first
         # S: (?, m, n)
         with tf.variable_scope('bi_attention') as scope:
-            S = self.similarity(y_q, y_c)
+            S = self.bilinear_similarity(y_q, y_c)
             H = self.Q2C_attention(y_q, y_c, S)  # H = (?, 2h, m)
             U = self.C2Q_attention(y_q, y_c, S)  # U = (?, 2h, m)
             # need to compute G
@@ -44,29 +44,19 @@ class BiLSTM_Encoder():
             G = tf.transpose(G, perm=[0, 2, 1])
         return G
 
-    # def similarity(self, y_q, y_c):
-    #     # y_q: (?, 2h, n)
-    #     # y_c: (?, 2h, m)
-    #     # S : (?, m, n)
-    #     with tf.variable_scope('similarity') as scope:
-    #         w_s1 = tf.get_variable('w_sim_1', shape=(2 * self.hidden_size, 1),
-    #             initializer=tf.contrib.layers.xavier_initializer())
-    #         w_s2 = tf.get_variable('w_sim_2', shape=(2 * self.hidden_size, 1),
-    #             initializer=tf.contrib.layers.xavier_initializer())
-    #         w_s3 = tf.get_variable('w_sim_3', shape=(1, 2 * self.hidden_size, 1),
-    #             initializer=tf.contrib.layers.xavier_initializer())
-
-    #         y_c_T = tf.transpose(y_c, perm=[0, 2, 1]) # # y_c: (?, m, 2h)
-    #         y_q_T = tf.transpose(y_q, perm=[0, 2, 1]) # y_q_T: (?, n, 2h)
-
-    #         S_c = tf.matmul(tf.reshape(y_c_T, [-1, 2 * self.hidden_size]), w_s1)  # (?m, 2h) * (2h, 1) = (?m, 1)
-    #         S_q = tf.matmul(tf.reshape(y_q_T, [-1, 2 * self.hidden_size]), w_s2)  # (?n, 2h) * (2h, 1) = (?n, 1)
-    #         S_c = tf.reshape(S_c, [-1, self.max_context_len, 1])                # (?, m, 1)
-    #         S_q = tf.reshape(S_q, [-1, self.max_question_len, 1])               # (?, n, 1)
-
-    #         S_cov = tf.matmul(y_q_T, y_c * w_s3)  # (?, n, 2h) * [(?, 2h, m) o (1, 2h, 1)] = (?, n, m)
-    #         S = S_cov + tf.matmul(S_q, tf.transpose(S_c, perm=[0, 2, 1]))       # (?, n, m) + (?, n, 1) * (?, 1, m) = (?, n, m)
-    #     return S
+    def bilinear_similarity(self, y_q, y_c):
+        # y_q: (?, 2h, n)
+        # y_c: (?, 2h, m)
+        # S : (?, n, m)
+        with tf.variable_scope('similarity') as scope:
+            batch_size = tf.shape(y_c)[0]
+            w_alpha = tf.get_variable('w_alpha', shape=(2 * self.hidden_size, 2 * self.hidden_size),
+                initializer=tf.contrib.layers.xavier_initializer())
+            w_alpha_tiled = tf.tile(tf.expand_dims(w_alpha, 0), [batch_size, 1, 1])
+            y_q_T = tf.transpose(y_q, perm=[0, 2, 1]) # U_T: (?, n, 2h)
+            bi_S_temp = tf.einsum('aij,ajk->aik', y_q_T, w_alpha_tiled) # (?, n, 2h) * (2h, 2h) = (?, n, 2h)
+            S = tf.einsum('aij,ajk->aik', bi_S_temp, y_c)  # (?, n, 2h) * (?, 2h, m) = (?, n, m)
+        return S
     def similarity(self, y_q, y_c):
         # y_q: (?, 2h, n)
         # y_c: (?, 2h, m)
@@ -152,9 +142,10 @@ class BiLSTM_Encoder():
                  It can be context-level representation, word-level representation,
                  or both.
         """
-        filtered_context = self.filter_layer(question, context)
+        #filtered_context = self.filter_layer(question, context)
         yq = self.BiLSTM(question, question_mask, self.max_question_len, 'question_BiLSTM', dropout) # (?, 2h, n)
-        yc = self.BiLSTM(filtered_context, context_mask, self.max_context_len, 'context_BiLSTM', dropout) # (?, 2h, m)
+        yc = self.BiLSTM(context, context_mask, self.max_context_len, 'context_BiLSTM', dropout) # (?, 2h, m)
+        #yc = self.BiLSTM(filtered_context, context_mask, self.max_context_len, 'context_BiLSTM', dropout) # (?, 2h, m)
         return yq, yc, self.bi_attention(yq, yc)
 
 class Dummy_Encoder(object):

@@ -244,8 +244,8 @@ class QASystem(object):
 
         f1 = 0.
         em = 0.
-
-        for i in range(sample):
+        index = min(len(dataset), sample)
+        for i in range(index):
             sample_dataset = [dataset[i]] ## batch size = 1, keep same format after indexing
             (a_s, a_e) = self.answer(session, sample_dataset)
             (a_s_true, a_e_true) = sample_dataset[0][6]
@@ -307,7 +307,7 @@ class QASystem(object):
 
         train_examples, dev_examples = split_train_dev(dataset)
 
-        best_score = 0
+        best_score = 100000
         for epoch in range(self.n_epoch):
             print("Epoch {:} out of {:}".format(epoch + 1, self.n_epoch))
             dev_score = self.run_epoch(session, train_examples, dev_examples)
@@ -316,7 +316,7 @@ class QASystem(object):
             f1, em = self.evaluate_answer(session, train_examples, self.rev_vocab, log = True)
             logging.info("Dev F1 & EM")
             f1, em = self.evaluate_answer(session, dev_examples, self.rev_vocab, log = True)
-            if dev_score > best_score:
+            if dev_score < best_score:
                 best_score = dev_score
                 print("New best dev score! Saving model in {}".format(train_dir))
                 self.saver.save(session, train_dir)
