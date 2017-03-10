@@ -12,11 +12,12 @@ from util import variable_summaries
 logging.basicConfig(level=logging.INFO)
 
 class BiLSTM_Encoder():
-    def __init__(self, hidden_size, max_context_len, max_question_len, vocab_dim):
+    def __init__(self, hidden_size, max_context_len, max_question_len, vocab_dim, summary_flag):
         self.hidden_size = hidden_size
         self.vocab_dim = vocab_dim
         self.max_context_len = max_context_len
         self.max_question_len = max_question_len
+        self.summary_flag = summary_flag
 
     def BiLSTM(self, inputs, masks, length, scope_name, dropout):
         with tf.variable_scope(scope_name):
@@ -78,9 +79,10 @@ class BiLSTM_Encoder():
             w_s3 = tf.get_variable('w_sim_3', shape=(2 * self.hidden_size, 1),
                 initializer=tf.contrib.layers.xavier_initializer())
 
-            variable_summaries(w_s1)
-            variable_summaries(w_s2)
-            variable_summaries(w_s3)
+            if self.summary_flag:
+                variable_summaries(w_s1)
+                variable_summaries(w_s2)
+                variable_summaries(w_s3)
 
             H = tf.transpose(y_c, perm=[0, 2, 1]) # # H: (?, m, 2h)
             U = tf.transpose(y_q, perm=[0, 2, 1]) # U_T: (?, n, 2h)
@@ -125,7 +127,10 @@ class BiLSTM_Encoder():
         with tf.variable_scope('similarity') as scope:
             w_f = tf.get_variable('w_filter', shape=(self.max_question_len, 1),
                 initializer=tf.contrib.layers.xavier_initializer())
-            variable_summaries(w_f)
+
+            if self.summary_flag:
+                variable_summaries(w_f)
+
             cosine_sim = self._cosine_similarity(question, context)       # (?, m, n)
             cosine_sim_reshape = tf.reshape(cosine_sim, [-1, self.max_question_len])    # (?m, n)
             relevence = tf.reshape(tf.matmul(cosine_sim_reshape, w_f), [-1, self.max_context_len, 1])    # (?m, n) * (n, 1) => (?m, 1) => (?, m, 1)
@@ -151,7 +156,6 @@ class BiLSTM_Encoder():
         yq = self.BiLSTM(question, question_mask, self.max_question_len, 'question_BiLSTM', dropout) # (?, 2h, n)
         yc = self.BiLSTM(filtered_context, context_mask, self.max_context_len, 'context_BiLSTM', dropout) # (?, 2h, m)
         return yq, yc, self.bi_attention(yq, yc)
-
 
 class Dummy_Encoder(object):
     def LSTM(self, inputs, masks, length):

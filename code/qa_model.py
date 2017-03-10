@@ -45,6 +45,7 @@ class QASystem(object):
         self.rev_vocab = rev_vocab
         self.dropout = flags.dropout
         self.summaries_dir = flags.summaries_dir
+        self.summary_flag = flags.summary_flag
 
         # ==== set up placeholder tokens ========
         self.context_placeholder = tf.placeholder(tf.int32, shape=(None, self.max_context_len))
@@ -60,10 +61,12 @@ class QASystem(object):
             context_embeddings, question_embeddings = self.setup_embeddings()
             self.h_s,self.h_e = self.setup_system(context_embeddings, question_embeddings)
             self.loss, self.masked_h_s,self.masked_h_e = self.setup_loss(self.h_s,self.h_e)
-            tf.summary.scalar('cross_entropy', self.loss)
+
         # ==== set up training/updating procedure ====
             self.train_op = tf.train.AdamOptimizer(self.lr).minimize(self.loss)
-            self.merged = tf.summary.merge_all()
+            if self.summary_flag:
+                tf.summary.scalar('cross_entropy', self.loss)
+                self.merged = tf.summary.merge_all()
 
     def setup_embeddings(self):
         """
@@ -131,8 +134,13 @@ class QASystem(object):
         :return:
         """
         input_feed = self.create_feed_dict(train_batch, 1 - self.dropout)
-        output_feed = [self.train_op, self.loss, self.merged]
-        _, loss, summary = session.run(output_feed, input_feed)
+        if self.summary_flag:
+            output_feed = [self.train_op, self.loss, self.merged]
+            _, loss, summary = session.run(output_feed, input_feed)
+        else:
+            output_feed = [self.train_op, self.loss]
+            _, loss = session.run(output_feed, input_feed)
+            summary = None
         return loss, summary
 
     def run_epoch(self, session, train_examples, dev_examples):
@@ -140,7 +148,8 @@ class QASystem(object):
         for i, batch in enumerate(minibatches(train_examples, self.batch_size)):
             loss, summary = self.optimize(session, batch)
             prog.update(i + 1, [("train loss", loss)])
-            self.train_writer.add_summary(summary, i)
+            if self.summary_flag:
+                self.train_writer.add_summary(summary, i)
         logging.info("Evaluating on development data")
         validate_cost = self.test(session, dev_examples)
         return validate_cost
@@ -293,7 +302,9 @@ class QASystem(object):
         logging.info("Number of params: %d (retreival took %f secs)" % (num_params, toc - tic))
 
         self.saver = tf.train.Saver()
-        self.train_writer = tf.summary.FileWriter(self.summaries_dir + '/train', session.graph)
+        if self.summary_flag:
+            self.train_writer = tf.summary.FileWriter(self.summaries_dir + '/train', session.graph)
+
         train_examples, dev_examples = split_train_dev(dataset)
 
         best_score = 0

@@ -37,6 +37,7 @@ tf.app.flags.DEFINE_string("embed_path", "", "Path to the trimmed GLoVe embeddin
 tf.app.flags.DEFINE_integer("max_context_len", 300, "max length of the context input")
 tf.app.flags.DEFINE_integer("max_question_len", 100, "max length of the question input")
 tf.app.flags.DEFINE_string('summaries_dir', 'summary/', 'tensorboard summary dir')
+tf.app.flags.DEFINE_bool('summary_flag', False, 'if true log summary')
 FLAGS = tf.app.flags.FLAGS
 
 
@@ -89,8 +90,8 @@ def main(_):
     vocab_path = FLAGS.vocab_path or pjoin(FLAGS.data_dir, "vocab.dat")
     vocab, rev_vocab = initialize_vocab(vocab_path)
     embedding = tf.constant(load_embeddings(embed_path), dtype = tf.float32)
-    encoder = Encoder(FLAGS.state_size, FLAGS.max_context_len, FLAGS.max_question_len, FLAGS.embedding_size)
-    decoder = Decoder(FLAGS.state_size, FLAGS.max_context_len, FLAGS.max_question_len, FLAGS.output_size)
+    encoder = Encoder(FLAGS.state_size, FLAGS.max_context_len, FLAGS.max_question_len, FLAGS.embedding_size, FLAGS.summary_flag)
+    decoder = Decoder(FLAGS.state_size, FLAGS.max_context_len, FLAGS.max_question_len, FLAGS.output_size, FLAGS.summary_flag)
 
     qa = QASystem(encoder, decoder, FLAGS, embedding, rev_vocab)
 
