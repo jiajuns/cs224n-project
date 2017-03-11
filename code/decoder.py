@@ -14,12 +14,13 @@ from evaluate import exact_match_score, f1_score
 from util import Progbar, minibatches, split_train_dev, variable_summaries
 
 class Decoder(object):
-    def __init__(self, hidden_size, max_context_len, max_question_len, output_size, summary_flag):
+    def __init__(self, hidden_size, max_context_len, max_question_len, output_size, summary_flag, reg_scale):
         self.hidden_size = hidden_size
         self.output_size = output_size
         self.max_context_len = max_context_len
         self.max_question_len = max_question_len
         self.summary_flag = summary_flag
+        self.reg_scale = reg_scale
 
     def decode(self):
         """
@@ -81,7 +82,6 @@ class LSTM_Decorder(Decoder):
 
         return p_start, p_end
 
-
 class BiLSTM_Decoder(Decoder):
     def model_layer(self, context_mask, dropout, G):
         # G (?, m, 8h)
@@ -103,6 +103,9 @@ class BiLSTM_Decoder(Decoder):
                 initializer=tf.contrib.layers.xavier_initializer())
             w_2 = tf.get_variable('w_end', shape=(10 * self.hidden_size, 1),
                 initializer=tf.contrib.layers.xavier_initializer())
+
+            tf.contrib.layers.apply_regularization(
+                tf.contrib.layers.l2_regularizer(self.reg_scale), [w_1, w_2])
 
             if self.summary_flag:
                 variable_summaries(w_1, "output_w_1")

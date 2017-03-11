@@ -19,7 +19,7 @@ logging.basicConfig(level=logging.INFO)
 tf.app.flags.DEFINE_float("learning_rate", 0.01, "Learning rate.")
 tf.app.flags.DEFINE_float("max_grad_norm", 10.0, "Clip gradients to this norm.")
 tf.app.flags.DEFINE_float("dropout", 0.2, "Fraction of units randomly dropped on non-recurrent connections.")
-tf.app.flags.DEFINE_integer("train_size", 5000, "Size of the training data")
+tf.app.flags.DEFINE_integer("train_size", 10000, "Size of the training data")
 tf.app.flags.DEFINE_integer("batch_size", 100, "Batch size to use during training.")
 tf.app.flags.DEFINE_integer("epochs", 10, "Number of epochs to train.")
 tf.app.flags.DEFINE_integer("state_size", 200, "Size of each model layer.")
@@ -38,6 +38,7 @@ tf.app.flags.DEFINE_integer("max_context_len", 1000, "max length of the context 
 tf.app.flags.DEFINE_integer("max_question_len", 100, "max length of the question input")
 tf.app.flags.DEFINE_string('summaries_dir', 'summary/', 'tensorboard summary dir')
 tf.app.flags.DEFINE_bool('summary_flag', True, 'if true log summary')
+tf.app.flags.DEFINE_float('reg_scale', 0.0001, 'regularization scale')
 FLAGS = tf.app.flags.FLAGS
 
 
@@ -90,8 +91,8 @@ def main(_):
     vocab_path = FLAGS.vocab_path or pjoin(FLAGS.data_dir, "vocab.dat")
     vocab, rev_vocab = initialize_vocab(vocab_path)
     embedding = tf.constant(load_embeddings(embed_path), dtype = tf.float32)
-    encoder = Encoder(FLAGS.state_size, FLAGS.max_context_len, FLAGS.max_question_len, FLAGS.embedding_size, FLAGS.summary_flag)
-    decoder = Decoder(FLAGS.state_size, FLAGS.max_context_len, FLAGS.max_question_len, FLAGS.output_size, FLAGS.summary_flag)
+    encoder = Encoder(FLAGS.state_size, FLAGS.max_context_len, FLAGS.max_question_len, FLAGS.embedding_size, FLAGS.summary_flag, FLAGS.reg_scale)
+    decoder = Decoder(FLAGS.state_size, FLAGS.max_context_len, FLAGS.max_question_len, FLAGS.output_size, FLAGS.summary_flag, FLAGS.reg_scale)
 
     qa = QASystem(encoder, decoder, FLAGS, embedding, rev_vocab)
 

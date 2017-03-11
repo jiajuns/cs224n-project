@@ -12,12 +12,13 @@ from util import variable_summaries
 logging.basicConfig(level=logging.INFO)
 
 class BiLSTM_Encoder():
-    def __init__(self, hidden_size, max_context_len, max_question_len, vocab_dim, summary_flag):
+    def __init__(self, hidden_size, max_context_len, max_question_len, vocab_dim, summary_flag, reg_scale):
         self.hidden_size = hidden_size
         self.vocab_dim = vocab_dim
         self.max_context_len = max_context_len
         self.max_question_len = max_question_len
         self.summary_flag = summary_flag
+        self.reg_scale = reg_scale
 
     def BiLSTM(self, inputs, masks, length, scope_name, dropout):
         with tf.variable_scope(scope_name):
@@ -52,6 +53,9 @@ class BiLSTM_Encoder():
             batch_size = tf.shape(y_c)[0]
             w_alpha = tf.get_variable('w_alpha', shape=(2 * self.hidden_size, 2 * self.hidden_size),
                 initializer=tf.contrib.layers.xavier_initializer())
+            tf.contrib.layers.apply_regularization(
+                tf.contrib.layers.l2_regularizer(self.reg_scale), [w_alpha])
+
             if self.summary_flag:
                 variable_summaries(w_alpha, "bilinear_w_alpha")
             w_alpha_tiled = tf.tile(tf.expand_dims(w_alpha, 0), [batch_size, 1, 1])
@@ -70,6 +74,9 @@ class BiLSTM_Encoder():
                 initializer=tf.contrib.layers.xavier_initializer())
             w_s3 = tf.get_variable('w_sim_3', shape=(2 * self.hidden_size, 1),
                 initializer=tf.contrib.layers.xavier_initializer())
+
+            tf.contrib.layers.apply_regularization(
+                tf.contrib.layers.l2_regularizer(self.reg_scale), [w_s1, w_s2, w_s3])
 
             if self.summary_flag:
                 variable_summaries(w_s1, "w_sim_1")
@@ -119,6 +126,9 @@ class BiLSTM_Encoder():
         with tf.variable_scope('similarity') as scope:
             w_f = tf.get_variable('w_filter', shape=(self.max_question_len, 1),
                 initializer=tf.contrib.layers.xavier_initializer())
+
+            tf.contrib.layers.apply_regularization(
+                tf.contrib.layers.l2_regularizer(1e-4), [w_f])
 
             if self.summary_flag:
                 variable_summaries(w_f, "filter_layer_weights")

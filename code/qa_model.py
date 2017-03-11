@@ -47,6 +47,7 @@ class QASystem(object):
         self.summaries_dir = flags.summaries_dir
         self.summary_flag = flags.summary_flag
         self.max_grad_norm = flags.max_grad_norm
+        self.reg_scale = flags.reg_scale
 
         # ==== set up placeholder tokens ========
         self.context_placeholder = tf.placeholder(tf.int32, shape=(None, self.max_context_len))
@@ -118,7 +119,9 @@ class QASystem(object):
             #     tf.reduce_mean(tf.nn.l2_loss(masked_h_e - end_span))
             loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(h_s, self.start_span_placeholder) +
                    tf.nn.softmax_cross_entropy_with_logits(h_e, self.end_span_placeholder))
-        return loss, masked_h_s, masked_h_e
+            reg_loss = tf.get_collection(tf.GraphKeys.REGULARIZATION_LOSSES)
+            total_loss = loss + sum(reg_loss)
+        return total_loss, masked_h_s, masked_h_e
 
     def create_feed_dict(self, train_batch, dropout):
         feed_dict = {
