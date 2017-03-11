@@ -99,9 +99,9 @@ class BiLSTM_Decoder(Decoder):
         # M (?, m, 2h)
         # the softmax part is implemented together with loss function
         with tf.variable_scope('output_layer'):
-            w_1 = tf.get_variable('w_start', shape=(10 * self.hidden_size, 1),
+            w_1 = tf.get_variable('w_start', shape=(2 * self.hidden_size, 1),
                 initializer=tf.contrib.layers.xavier_initializer())
-            w_2 = tf.get_variable('w_end', shape=(10 * self.hidden_size, 1),
+            w_2 = tf.get_variable('w_end', shape=(2 * self.hidden_size, 1),
                 initializer=tf.contrib.layers.xavier_initializer())
 
             # tf.contrib.layers.apply_regularization(
@@ -111,12 +111,12 @@ class BiLSTM_Decoder(Decoder):
                 variable_summaries(w_1, "output_w_1")
                 variable_summaries(w_2, "output_w_2")
 
-            temp_1 = tf.concat(2, [G, M])  # (?, m, 10h)
+            temp_1 = tf.concat(2, [M])  # (?, m, 10h)
             temp_1_reshape = tf.reshape(temp_1, shape=[-1, 10 * self.hidden_size])  # (?m, 10h)
             temp_1_reshape_o = tf.nn.dropout(temp_1_reshape, dropout)
             h_1 = tf.reshape(tf.matmul(temp_1_reshape_o, w_1), [-1, self.max_context_len]) # (?m, 10h) * (10h, 1) -> (?m, 1) -> (?, m)
 
-            temp_2 = tf.concat(2, [G, M])  # (?, m, 10h)
+            temp_2 = tf.concat(2, [M])  # (?, m, 10h)
             temp_2_reshape = tf.reshape(temp_2, shape=[-1, 10 * self.hidden_size])  # (?m, 10h)
             temp_1_reshape_o = tf.nn.dropout(temp_1_reshape, dropout)
             h_2 = tf.reshape(tf.matmul(temp_1_reshape_o, w_2), [-1, self.max_context_len]) # (?m, 10h) * (10h, 1) -> (?m, 1) -> (?, m)
