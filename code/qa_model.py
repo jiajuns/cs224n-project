@@ -119,6 +119,9 @@ class QASystem(object):
             #     tf.reduce_mean(tf.nn.l2_loss(masked_h_e - end_span))
             loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(h_s, self.start_span_placeholder) +
                    tf.nn.softmax_cross_entropy_with_logits(h_e, self.end_span_placeholder))
+            reg_vars = [tf_var for tf_var in tf.trainable_variables() if "Bias" not in tf_var.name]
+            tf.contrib.layers.apply_regularization(
+                tf.contrib.layers.l2_regularizer(self.reg_scale), reg_vars)
             reg_loss = tf.get_collection(tf.GraphKeys.REGULARIZATION_LOSSES)
             total_loss = loss + sum(reg_loss)
         return total_loss, masked_h_s, masked_h_e

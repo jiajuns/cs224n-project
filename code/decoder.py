@@ -104,8 +104,8 @@ class BiLSTM_Decoder(Decoder):
             w_2 = tf.get_variable('w_end', shape=(10 * self.hidden_size, 1),
                 initializer=tf.contrib.layers.xavier_initializer())
 
-            tf.contrib.layers.apply_regularization(
-                tf.contrib.layers.l2_regularizer(self.reg_scale), [w_1, w_2])
+            # tf.contrib.layers.apply_regularization(
+            #     tf.contrib.layers.l2_regularizer(self.reg_scale), [w_1, w_2])
 
             if self.summary_flag:
                 variable_summaries(w_1, "output_w_1")

@@ -53,8 +53,8 @@ class BiLSTM_Encoder():
             batch_size = tf.shape(y_c)[0]
             w_alpha = tf.get_variable('w_alpha', shape=(2 * self.hidden_size, 2 * self.hidden_size),
                 initializer=tf.contrib.layers.xavier_initializer())
-            tf.contrib.layers.apply_regularization(
-                tf.contrib.layers.l2_regularizer(self.reg_scale), [w_alpha])
+            # tf.contrib.layers.apply_regularization(
+            #     tf.contrib.layers.l2_regularizer(self.reg_scale), [w_alpha])
 
             if self.summary_flag:
                 variable_summaries(w_alpha, "bilinear_w_alpha")
@@ -75,8 +75,8 @@ class BiLSTM_Encoder():
             w_s3 = tf.get_variable('w_sim_3', shape=(2 * self.hidden_size, 1),
                 initializer=tf.contrib.layers.xavier_initializer())
 
-            tf.contrib.layers.apply_regularization(
-                tf.contrib.layers.l2_regularizer(self.reg_scale), [w_s1, w_s2, w_s3])
+            # tf.contrib.layers.apply_regularization(
+            #     tf.contrib.layers.l2_regularizer(self.reg_scale), [w_s1, w_s2, w_s3])
 
             if self.summary_flag:
                 variable_summaries(w_s1, "w_sim_1")
@@ -127,8 +127,8 @@ class BiLSTM_Encoder():
             w_f = tf.get_variable('w_filter', shape=(self.max_question_len, 1),
                 initializer=tf.contrib.layers.xavier_initializer())
 
-            tf.contrib.layers.apply_regularization(
-                tf.contrib.layers.l2_regularizer(1e-4), [w_f])
+            # tf.contrib.layers.apply_regularization(
+            #     tf.contrib.layers.l2_regularizer(1e-4), [w_f])
 
             if self.summary_flag:
                 variable_summaries(w_f, "filter_layer_weights")
