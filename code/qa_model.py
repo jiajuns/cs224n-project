@@ -46,6 +46,7 @@ class QASystem(object):
         self.dropout = flags.dropout
         self.summaries_dir = flags.summaries_dir
         self.summary_flag = flags.summary_flag
+        self.max_grad_norm = flags.max_grad_norm
 
         # ==== set up placeholder tokens ========
         self.context_placeholder = tf.placeholder(tf.int32, shape=(None, self.max_context_len))
@@ -61,9 +62,14 @@ class QASystem(object):
             context_embeddings, question_embeddings = self.setup_embeddings()
             self.h_s,self.h_e = self.setup_system(context_embeddings, question_embeddings)
             self.loss, self.masked_h_s,self.masked_h_e = self.setup_loss(self.h_s,self.h_e)
+            self.optimizer = tf.train.AdamOptimizer(self.lr)
 
         # ==== set up training/updating procedure ====
-            self.train_op = tf.train.AdamOptimizer(self.lr).minimize(self.loss)
+            grads_and_vars = self.optimizer.compute_gradients(self.loss)
+            grads = [gv[0] for gv in grads_and_vars]
+            variables = [gv[1] for gv in grads_and_vars]
+            grads, _ = tf.clip_by_global_norm(grads, self.max_grad_norm)
+            self.train_op = self.optimizer.apply_gradients(zip(grads, variables))
             if self.summary_flag:
                 tf.summary.scalar('cross_entropy', self.loss)
                 self.merged = tf.summary.merge_all()
@@ -182,7 +188,7 @@ class QASystem(object):
         so that other methods like self.answer() will be able to work properly
         :return:
         """
-        unzipped_dev_example = zip(*dev_example)
+        unzipped_dev_example = list(zip(*dev_example))
         input_feed = self.create_feed_dict(unzipped_dev_example, dropout = 1)
         output_feed = [self.h_s, self.h_e]
         outputs = session.run(output_feed, input_feed)

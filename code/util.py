@@ -11,7 +11,7 @@ logging.basicConfig(format='%(levelname)s:%(message)s', level=logging.DEBUG)
 
 def variable_summaries(var, name_scope, matrix = True):
   """Attach a lot of summaries to a Tensor (for TensorBoard visualization)."""
-  
+
   with tf.name_scope(name_scope):
     mean = tf.reduce_mean(var)
     tf.summary.scalar('mean', mean)
