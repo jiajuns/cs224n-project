@@ -112,12 +112,12 @@ class BiLSTM_Decoder(Decoder):
                 variable_summaries(w_2, "output_w_2")
 
             temp_1 = tf.concat(2, [M])  # (?, m, 10h)
-            temp_1_reshape = tf.reshape(temp_1, shape=[-1, 10 * self.hidden_size])  # (?m, 10h)
+            temp_1_reshape = tf.reshape(temp_1, shape=[-1, 2 * self.hidden_size])  # (?m, 10h)
             temp_1_reshape_o = tf.nn.dropout(temp_1_reshape, dropout)
             h_1 = tf.reshape(tf.matmul(temp_1_reshape_o, w_1), [-1, self.max_context_len]) # (?m, 10h) * (10h, 1) -> (?m, 1) -> (?, m)
 
             temp_2 = tf.concat(2, [M])  # (?, m, 10h)
-            temp_2_reshape = tf.reshape(temp_2, shape=[-1, 10 * self.hidden_size])  # (?m, 10h)
+            temp_2_reshape = tf.reshape(temp_2, shape=[-1, 2 * self.hidden_size])  # (?m, 10h)
             temp_1_reshape_o = tf.nn.dropout(temp_1_reshape, dropout)
             h_2 = tf.reshape(tf.matmul(temp_1_reshape_o, w_2), [-1, self.max_context_len]) # (?m, 10h) * (10h, 1) -> (?m, 1) -> (?, m)
 
