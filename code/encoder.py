@@ -22,8 +22,8 @@ class BiLSTM_Encoder():
 
     def BiLSTM(self, inputs, masks, length, scope_name, dropout):
         with tf.variable_scope(scope_name):
-            lstm_fw_cell = tf.nn.rnn_cell.DropoutWrapper(tf.nn.rnn_cell.BasicLSTMCell(self.hidden_size, forget_bias=1.0), output_keep_prob = dropout)
-            lstm_bw_cell = tf.nn.rnn_cell.DropoutWrapper(tf.nn.rnn_cell.BasicLSTMCell(self.hidden_size, forget_bias=1.0), output_keep_prob = dropout)
+            lstm_fw_cell = tf.nn.rnn_cell.DropoutWrapper(tf.nn.rnn_cell.GRUCell(self.hidden_size), output_keep_prob = dropout)
+            lstm_bw_cell = tf.nn.rnn_cell.DropoutWrapper(tf.nn.rnn_cell.GRUCell(self.hidden_size), output_keep_prob = dropout)
             seq_len = tf.reduce_sum(tf.cast(masks, tf.int32), axis=1)
             outputs, _ = tf.nn.bidirectional_dynamic_rnn(
                 lstm_fw_cell, lstm_bw_cell, inputs = inputs, sequence_length = seq_len, dtype=tf.float32
@@ -37,7 +37,7 @@ class BiLSTM_Encoder():
         # need to compute S first
         # S: (?, m, n)
         with tf.variable_scope('bi_attention') as scope:
-            S = self.bilinear_similarity(y_q, y_c)
+            S = self.similarity(y_q, y_c)
             H = self.Q2C_attention(y_q, y_c, S)  # H = (?, 2h, m)
             U = self.C2Q_attention(y_q, y_c, S)  # U = (?, 2h, m)
             # need to compute G
@@ -53,8 +53,6 @@ class BiLSTM_Encoder():
             batch_size = tf.shape(y_c)[0]
             w_alpha = tf.get_variable('w_alpha', shape=(2 * self.hidden_size, 2 * self.hidden_size),
                 initializer=tf.contrib.layers.xavier_initializer())
-            # tf.contrib.layers.apply_regularization(
-            #     tf.contrib.layers.l2_regularizer(self.reg_scale), [w_alpha])
 
             if self.summary_flag:
                 variable_summaries(w_alpha, "bilinear_w_alpha")
@@ -63,6 +61,7 @@ class BiLSTM_Encoder():
             bi_S_temp = tf.einsum('aij,ajk->aik', y_q_T, w_alpha_tiled) # (?, n, 2h) * (2h, 2h) = (?, n, 2h)
             S = tf.einsum('aij,ajk->aik', bi_S_temp, y_c)  # (?, n, 2h) * (?, 2h, m) = (?, n, m)
         return S
+
     def similarity(self, y_q, y_c):
         # y_q: (?, 2h, n)
         # y_c: (?, 2h, m)
@@ -74,9 +73,6 @@ class BiLSTM_Encoder():
                 initializer=tf.contrib.layers.xavier_initializer())
             w_s3 = tf.get_variable('w_sim_3', shape=(2 * self.hidden_size, 1),
                 initializer=tf.contrib.layers.xavier_initializer())
-
-            # tf.contrib.layers.apply_regularization(
-            #     tf.contrib.layers.l2_regularizer(self.reg_scale), [w_s1, w_s2, w_s3])
 
             if self.summary_flag:
                 variable_summaries(w_s1, "w_sim_1")
