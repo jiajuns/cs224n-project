@@ -257,7 +257,6 @@ def get_minibatches(data, minibatch_size, shuffle=True):
     data_size = len(data[0]) if list_data else len(data)
     indices = np.arange(data_size)
     if shuffle:
-        np.random.seed(1)
         np.random.shuffle(indices)
     for minibatch_start in np.arange(0, data_size, minibatch_size):
         minibatch_indices = indices[minibatch_start:minibatch_start + minibatch_size]

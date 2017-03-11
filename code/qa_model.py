@@ -60,8 +60,8 @@ class QASystem(object):
         # ==== assemble pieces ====
         with tf.variable_scope("qa", initializer=tf.uniform_unit_scaling_initializer(1.0)):
             context_embeddings, question_embeddings = self.setup_embeddings()
-            self.h_s,self.h_e = self.setup_system(context_embeddings, question_embeddings)
-            self.loss, self.masked_h_s,self.masked_h_e = self.setup_loss(self.h_s,self.h_e)
+            self.h_s, self.h_e = self.setup_system(context_embeddings, question_embeddings)
+            self.loss, self.masked_h_s, self.masked_h_e = self.setup_loss(self.h_s, self.h_e)
             self.optimizer = tf.train.AdamOptimizer(self.lr)
 
         # ==== set up training/updating procedure ====
