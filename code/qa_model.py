@@ -48,6 +48,7 @@ class QASystem(object):
         self.summary_flag = flags.summary_flag
         self.max_grad_norm = flags.max_grad_norm
         self.reg_scale = flags.reg_scale
+        self.pred_log = "{}_{}.txt".format(flags.prediction_log, int(time.time()))
 
         # ==== set up placeholder tokens ========
         self.context_placeholder = tf.placeholder(tf.int32, shape=(None, self.max_context_len))
@@ -256,6 +257,7 @@ class QASystem(object):
 
         f1 = 0.
         em = 0.
+        pred_log = open(self.pred_log, "w")
         index = min(len(dataset), sample)
         for i in range(index):
             sample_dataset = [dataset[i]] ## batch size = 1, keep same format after indexing
@@ -264,17 +266,24 @@ class QASystem(object):
             context = sample_dataset[0][0]
             question = sample_dataset[0][2]
             question_mask = sample_dataset[0][3]
+            question_string = self.formulate_answer(context, rev_vocab, 0, len(question) - 1, mask = question_mask)
             predicted_answer = self.formulate_answer(context, rev_vocab, a_s, a_e)
             true_answer = self.formulate_answer(context, rev_vocab, a_s_true, a_e_true)
             f1 += f1_score(predicted_answer, true_answer)
             em = exact_match_score(predicted_answer, true_answer)
+            pred_log.write("Question: {}\n".format(question_string))
+            pred_log.write("Predicted: {}\n".format(predicted_answer))
+            pred_log.write("Answer: {}\n".format(true_answer))
+            pred_log.write("F1: {}\n".format(f1_score(predicted_answer, true_answer)))
+            pred_log.write("EM: {}\n".format(exact_match_score(predicted_answer, true_answer)))
             if em:
                 em += 1
         f1 /= sample
         em /= sample
         if log:
+            pred_log.write("F1: {}, EM: {}, for {} samples\n".format(f1, em, sample))
             logging.info("F1: {}, EM: {}, for {} samples".format(f1, em, sample))
-
+        pred_log.close()
         return f1, em
 
     def train(self, session, dataset, train_dir):
@@ -318,9 +327,12 @@ class QASystem(object):
             self.train_writer = tf.summary.FileWriter(self.summaries_dir + '/train', session.graph)
 
         train_examples, dev_examples = split_train_dev(dataset)
-
+        logging.info("Prediction Log Dir: {}".format(self.pred_log))
         best_score = 100000
         for epoch in range(self.n_epoch):
+            pred_log = open(self.pred_log, "w")
+            pred_log.write("Epoch {:} out of {:}\n".format(epoch + 1, self.n_epoch))
+            pred_log.close()
             print("Epoch {:} out of {:}".format(epoch + 1, self.n_epoch))
             dev_score = self.run_epoch(session, train_examples, dev_examples)
             logging.info("Dev Cost: {}".format(dev_score))
