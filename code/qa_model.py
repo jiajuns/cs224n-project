@@ -269,14 +269,13 @@ class QASystem(object):
             predicted_answer = self.formulate_answer(context, rev_vocab, a_s, a_e)
             true_answer = self.formulate_answer(context, rev_vocab, a_s_true, a_e_true)
             f1 += f1_score(predicted_answer, true_answer)
-            em = exact_match_score(predicted_answer, true_answer)
+            if exact_match_score(predicted_answer, true_answer):
+                em += 1
             log_file.write("Question: {}\n".format(question_string))
             log_file.write("Predicted: {}\n".format(predicted_answer))
             log_file.write("Answer: {}\n".format(true_answer))
             log_file.write("F1: {}\n".format(f1_score(predicted_answer, true_answer)))
             log_file.write("EM: {}\n".format(exact_match_score(predicted_answer, true_answer)))
-            if em:
-                em += 1
         f1 /= sample
         em /= sample
         if log:
