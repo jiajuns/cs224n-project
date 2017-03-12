@@ -19,13 +19,8 @@ logging.basicConfig(level=logging.INFO)
 tf.app.flags.DEFINE_float("learning_rate", 0.001, "Learning rate.")
 tf.app.flags.DEFINE_float("max_grad_norm", 5.0, "Clip gradients to this norm.")
 tf.app.flags.DEFINE_float("dropout", 0.25, "Fraction of units randomly dropped on non-recurrent connections.")
-<<<<<<< HEAD
-tf.app.flags.DEFINE_integer("train_size", 300, "Size of the training data")
-tf.app.flags.DEFINE_integer("batch_size", 30, "Batch size to use during training.")
-=======
 tf.app.flags.DEFINE_integer("train_size", 20000, "Size of the training data")
 tf.app.flags.DEFINE_integer("batch_size", 100, "Batch size to use during training.")
->>>>>>> f77f69505c563ab072ccf4072a0cbef1a46b320b
 tf.app.flags.DEFINE_integer("epochs", 10, "Number of epochs to train.")
 tf.app.flags.DEFINE_integer("state_size", 100, "Size of each model layer.")
 tf.app.flags.DEFINE_integer("output_size", 2, "The output size of your model.")
@@ -38,20 +33,14 @@ tf.app.flags.DEFINE_string("optimizer", "adam", "adam / sgd")
 tf.app.flags.DEFINE_integer("print_every", 1, "How many iterations to do per print.")
 tf.app.flags.DEFINE_integer("keep", 0, "How many checkpoints to keep, 0 indicates keep all.")
 tf.app.flags.DEFINE_string("vocab_path", "data/squad/vocab.dat", "Path to vocab file (default: ./data/squad/vocab.dat)")
-tf.app.flags.DEFINE_string("prediction_log", "log/prediction", "Path to prediction file")
 tf.app.flags.DEFINE_string("embed_path", "", "Path to the trimmed GLoVe embedding (default: ./data/squad/glove.trimmed.{embedding_size}.npz)")
-tf.app.flags.DEFINE_integer("max_context_len", 300, "max length of the context input")
+tf.app.flags.DEFINE_integer("max_context_len", 1000, "max length of the context input")
 tf.app.flags.DEFINE_integer("max_question_len", 100, "max length of the question input")
 tf.app.flags.DEFINE_string('summaries_dir', 'summary/', 'tensorboard summary dir')
-<<<<<<< HEAD
-tf.app.flags.DEFINE_bool('summary_flag', False, 'if true log summary')
-tf.app.flags.DEFINE_float('reg_scale', 0.00001, 'regularization scale')
-=======
+tf.app.flags.DEFINE_string("prediction_log", "log/prediction", "Path to prediction file")
 tf.app.flags.DEFINE_bool('summary_flag', True, 'if true log summary')
 tf.app.flags.DEFINE_float('reg_scale', 0.00005, 'regularization scale')
->>>>>>> f77f69505c563ab072ccf4072a0cbef1a46b320b
 FLAGS = tf.app.flags.FLAGS
-
 
 def initialize_model(session, model, train_dir):
     ckpt = tf.train.get_checkpoint_state(train_dir)
