@@ -239,7 +239,7 @@ class QASystem(object):
         return answer
 
 
-    def evaluate_answer(self, session, dataset, rev_vocab, sample=100, log=False):
+    def evaluate_answer(self, session, dataset, rev_vocab, log_file, sample=100, log=False):
         """
         Evaluate the model's performance using the harmonic mean of F1 and Exact Match (EM)
         with the set of true answer labels
@@ -257,7 +257,6 @@ class QASystem(object):
 
         f1 = 0.
         em = 0.
-        pred_log = open(self.pred_log, "w")
         index = min(len(dataset), sample)
         for i in range(index):
             sample_dataset = [dataset[i]] ## batch size = 1, keep same format after indexing
@@ -266,24 +265,23 @@ class QASystem(object):
             context = sample_dataset[0][0]
             question = sample_dataset[0][2]
             question_mask = sample_dataset[0][3]
-            question_string = self.formulate_answer(context, rev_vocab, 0, len(question) - 1, mask = question_mask)
+            question_string = self.formulate_answer(question, rev_vocab, 0, len(question) - 1, mask = question_mask)
             predicted_answer = self.formulate_answer(context, rev_vocab, a_s, a_e)
             true_answer = self.formulate_answer(context, rev_vocab, a_s_true, a_e_true)
             f1 += f1_score(predicted_answer, true_answer)
             em = exact_match_score(predicted_answer, true_answer)
-            pred_log.write("Question: {}\n".format(question_string))
-            pred_log.write("Predicted: {}\n".format(predicted_answer))
-            pred_log.write("Answer: {}\n".format(true_answer))
-            pred_log.write("F1: {}\n".format(f1_score(predicted_answer, true_answer)))
-            pred_log.write("EM: {}\n".format(exact_match_score(predicted_answer, true_answer)))
+            log_file.write("Question: {}\n".format(question_string))
+            log_file.write("Predicted: {}\n".format(predicted_answer))
+            log_file.write("Answer: {}\n".format(true_answer))
+            log_file.write("F1: {}\n".format(f1_score(predicted_answer, true_answer)))
+            log_file.write("EM: {}\n".format(exact_match_score(predicted_answer, true_answer)))
             if em:
                 em += 1
         f1 /= sample
         em /= sample
         if log:
-            pred_log.write("F1: {}, EM: {}, for {} samples\n".format(f1, em, sample))
+            log_file.write("F1: {}, EM: {}, for {} samples\n".format(f1, em, sample))
             logging.info("F1: {}, EM: {}, for {} samples".format(f1, em, sample))
-        pred_log.close()
         return f1, em
 
     def train(self, session, dataset, train_dir):
@@ -329,17 +327,23 @@ class QASystem(object):
         train_examples, dev_examples = split_train_dev(dataset)
         logging.info("Prediction Log Dir: {}".format(self.pred_log))
         best_score = 100000
+        pred_log = open(self.pred_log, "w")
         for epoch in range(self.n_epoch):
-            pred_log = open(self.pred_log, "w")
             pred_log.write("Epoch {:} out of {:}\n".format(epoch + 1, self.n_epoch))
-            pred_log.close()
+            pred_log.write("{}\n".format("-"*60))
             print("Epoch {:} out of {:}".format(epoch + 1, self.n_epoch))
             dev_score = self.run_epoch(session, train_examples, dev_examples)
             logging.info("Dev Cost: {}".format(dev_score))
             logging.info("train F1 & EM")
-            f1, em = self.evaluate_answer(session, train_examples, self.rev_vocab, log = True)
+            pred_log.write("Training Set Epoch {:}\n".format(epoch + 1))
+            pred_log.write("{}\n".format("-"*60))
+            f1, em = self.evaluate_answer(session, train_examples, self.rev_vocab, pred_log, log = True)
+            pred_log.write("{}\n".format("-"*60))
             logging.info("Dev F1 & EM")
-            f1, em = self.evaluate_answer(session, dev_examples, self.rev_vocab, log = True)
+            pred_log.write("Dev Set Epoch {:}\n".format(epoch + 1))
+            pred_log.write("{}\n".format("-"*60))
+            f1, em = self.evaluate_answer(session, dev_examples, self.rev_vocab, pred_log, log = True)
+            pred_log.write("{}\n".format("-"*60))
             if dev_score < best_score:
                 best_score = dev_score
                 print("New best dev score! Saving model in {}".format(train_dir))
