@@ -16,10 +16,10 @@ import logging
 
 logging.basicConfig(level=logging.INFO)
 
-tf.app.flags.DEFINE_float("learning_rate", 0.01, "Learning rate.")
-tf.app.flags.DEFINE_float("max_grad_norm", 10.0, "Clip gradients to this norm.")
+tf.app.flags.DEFINE_float("learning_rate", 0.001, "Learning rate.")
+tf.app.flags.DEFINE_float("max_grad_norm", 5.0, "Clip gradients to this norm.")
 tf.app.flags.DEFINE_float("dropout", 0.25, "Fraction of units randomly dropped on non-recurrent connections.")
-tf.app.flags.DEFINE_integer("train_size", 3000, "Size of the training data")
+tf.app.flags.DEFINE_integer("train_size", 20000, "Size of the training data")
 tf.app.flags.DEFINE_integer("batch_size", 100, "Batch size to use during training.")
 tf.app.flags.DEFINE_integer("epochs", 10, "Number of epochs to train.")
 tf.app.flags.DEFINE_integer("state_size", 100, "Size of each model layer.")
@@ -38,7 +38,7 @@ tf.app.flags.DEFINE_integer("max_context_len", 1000, "max length of the context 
 tf.app.flags.DEFINE_integer("max_question_len", 100, "max length of the question input")
 tf.app.flags.DEFINE_string('summaries_dir', 'summary/', 'tensorboard summary dir')
 tf.app.flags.DEFINE_bool('summary_flag', True, 'if true log summary')
-tf.app.flags.DEFINE_float('reg_scale', 0.00001, 'regularization scale')
+tf.app.flags.DEFINE_float('reg_scale', 0.00005, 'regularization scale')
 FLAGS = tf.app.flags.FLAGS
 
 

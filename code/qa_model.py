@@ -195,7 +195,7 @@ class QASystem(object):
         :return:
         """
         unzipped_dev_example = list(zip(*dev_example))
-        input_feed = self.create_feed_dict(unzipped_dev_example, dropout = 1)
+        input_feed = self.create_feed_dict(unzipped_dev_example[0:4], dropout = 1)
         output_feed = [self.h_s, self.h_e]
         outputs = session.run(output_feed, input_feed)
         h_s = outputs[0]
@@ -313,7 +313,7 @@ class QASystem(object):
         toc = time.time()
         logging.info("Number of params: %d (retreival took %f secs)" % (num_params, toc - tic))
 
-        self.saver = tf.train.Saver()
+        # self.saver = tf.train.Saver()
         if self.summary_flag:
             self.train_writer = tf.summary.FileWriter(self.summaries_dir + '/train', session.graph)
 
@@ -330,7 +330,7 @@ class QASystem(object):
             f1, em = self.evaluate_answer(session, dev_examples, self.rev_vocab, log = True)
             if dev_score < best_score:
                 best_score = dev_score
-                print("New best dev score! Saving model in {}".format(train_dir))
-                self.saver.save(session, train_dir)
+                # print("New best dev score! Saving model in {}".format(train_dir))
+                # self.saver.save(session, train_dir)
 
         return best_score
