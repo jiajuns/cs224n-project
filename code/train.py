@@ -23,7 +23,7 @@ tf.app.flags.DEFINE_float("dropout", 0.20, "Fraction of units randomly dropped o
 tf.app.flags.DEFINE_integer("train_size", 81381, "Size of the training data")
 tf.app.flags.DEFINE_integer("batch_size", 150, "Batch size to use during training.")
 tf.app.flags.DEFINE_integer("epochs", 10, "Number of epochs to train.")
-tf.app.flags.DEFINE_integer("state_size", 200, "Size of each model layer.")
+tf.app.flags.DEFINE_integer("state_size", 100, "Size of each model layer.")
 tf.app.flags.DEFINE_integer("output_size", 2, "The output size of your model.")
 tf.app.flags.DEFINE_integer("embedding_size", 100, "Size of the pretrained vocabulary.")
 tf.app.flags.DEFINE_string("data_dir", "data/squad", "SQuAD directory (default ./data/squad)")
@@ -39,7 +39,7 @@ tf.app.flags.DEFINE_integer("max_context_len", 1000, "max length of the context 
 tf.app.flags.DEFINE_integer("max_question_len", 100, "max length of the question input")
 tf.app.flags.DEFINE_string('summaries_dir', 'summary/', 'tensorboard summary dir')
 tf.app.flags.DEFINE_string("prediction_log", "log/prediction", "Path to prediction file")
-tf.app.flags.DEFINE_bool('summary_flag', False, 'if true log summary')
+tf.app.flags.DEFINE_bool('summary_flag', True, 'if true log summary')
 tf.app.flags.DEFINE_float('reg_scale', 0.00005, 'regularization scale')
 FLAGS = tf.app.flags.FLAGS
 
