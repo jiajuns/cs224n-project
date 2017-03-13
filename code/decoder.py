@@ -110,12 +110,16 @@ class BiLSTM_Decoder(Decoder):
 
             self.batch_size = tf.shape(M)[0]
 
-            temp = tf.concat(2, [G, M])  # (?, m, 10h)
+            temp1 = tf.concat(2, [G, M])  # (?, m, 10h)
+            temp2 = tf.concat(2, [G, M])  # (?, m, 10h)
+            temp_1_o = tf.nn.dropout(temp1, dropout)
+            temp_2_o = tf.nn.dropout(temp2, dropout)
+
             w_1_tiled = tf.tile(tf.expand_dims(w_1, 0), [self.batch_size, 1, 1])
             w_2_tiled = tf.tile(tf.expand_dims(w_2, 0), [self.batch_size, 1, 1])
 
-            h_1 = tf.squeeze(tf.einsum('aij,ajk->aik',temp, w_1_tiled)) # (?, m, 10h) * (?, 10h, 1) -> (?, m, 1)
-            h_2 = tf.squeeze(tf.einsum('aij,ajk->aik',temp, w_2_tiled)) # (?, m, 10h) * (?, 10h, 1) -> (?, m, 1)
+            h_1 = tf.squeeze(tf.einsum('aij,ajk->aik',temp_1_o, w_1_tiled)) # (?, m, 10h) * (?, 10h, 1) -> (?, m, 1)
+            h_2 = tf.squeeze(tf.einsum('aij,ajk->aik',temp_2_o, w_2_tiled)) # (?, m, 10h) * (?, 10h, 1) -> (?, m, 1)
             return h_1, h_2
 
     def decode(self, context_mask, dropout, G):
