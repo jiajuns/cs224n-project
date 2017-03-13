@@ -86,8 +86,8 @@ class BiLSTM_Decoder(Decoder):
     def model_layer(self, context_mask, dropout, G):
         # G (?, m, 8h)
         with tf.variable_scope('model_layer'):
-            lstm_fw_cell = tf.nn.rnn_cell.DropoutWrapper(cell=tf.nn.rnn_cell.GRUCell(self.hidden_size), output_keep_prob=dropout)
-            lstm_bw_cell = tf.nn.rnn_cell.DropoutWrapper(cell=tf.nn.rnn_cell.GRUCell(self.hidden_size), output_keep_prob=dropout)
+            lstm_fw_cell = tf.nn.rnn_cell.DropoutWrapper(cell=tf.nn.rnn_cell.BasicLSTMCell(self.hidden_size), output_keep_prob=dropout)
+            lstm_bw_cell = tf.nn.rnn_cell.DropoutWrapper(cell=tf.nn.rnn_cell.BasicLSTMCell(self.hidden_size), output_keep_prob=dropout)
             seq_len = tf.reduce_sum(tf.cast(context_mask, tf.int32), axis=1)
             outputs, _ = tf.nn.bidirectional_dynamic_rnn(
                 lstm_fw_cell, lstm_bw_cell, inputs = G, sequence_length=seq_len, dtype=tf.float32
@@ -99,25 +99,22 @@ class BiLSTM_Decoder(Decoder):
         # M (?, m, 2h)
         # the softmax part is implemented together with loss function
         with tf.variable_scope('output_layer'):
-            w_1 = tf.get_variable('w_start', shape=(2 * self.hidden_size, 1),
+            w_1 = tf.get_variable('w_start', shape=(10 * self.hidden_size, 1),
                 initializer=tf.contrib.layers.xavier_initializer())
-            w_2 = tf.get_variable('w_end', shape=(2 * self.hidden_size, 1),
+            w_2 = tf.get_variable('w_end', shape=(10 * self.hidden_size, 1),
                 initializer=tf.contrib.layers.xavier_initializer())
-
-            # tf.contrib.layers.apply_regularization(
-            #     tf.contrib.layers.l2_regularizer(self.reg_scale), [w_1, w_2])
 
             if self.summary_flag:
                 variable_summaries(w_1, "output_w_1")
                 variable_summaries(w_2, "output_w_2")
 
-            temp_1 = tf.concat(2, [M])  # (?, m, 10h)
-            temp_1_reshape = tf.reshape(temp_1, shape=[-1, 2 * self.hidden_size])  # (?m, 10h)
+            temp_1 = tf.concat(2, [G, M])  # (?, m, 10h)
+            temp_1_reshape = tf.reshape(temp_1, shape=[-1, 10 * self.hidden_size])  # (?m, 10h)
             temp_1_reshape_o = tf.nn.dropout(temp_1_reshape, dropout)
             h_1 = tf.reshape(tf.matmul(temp_1_reshape_o, w_1), [-1, self.max_context_len]) # (?m, 10h) * (10h, 1) -> (?m, 1) -> (?, m)
 
-            temp_2 = tf.concat(2, [M])  # (?, m, 10h)
-            temp_2_reshape = tf.reshape(temp_2, shape=[-1, 2 * self.hidden_size])  # (?m, 10h)
+            temp_2 = tf.concat(2, [G, M])  # (?, m, 10h)
+            temp_2_reshape = tf.reshape(temp_2, shape=[-1, 10 * self.hidden_size])  # (?m, 10h)
             temp_1_reshape_o = tf.nn.dropout(temp_1_reshape, dropout)
             h_2 = tf.reshape(tf.matmul(temp_1_reshape_o, w_2), [-1, self.max_context_len]) # (?m, 10h) * (10h, 1) -> (?m, 1) -> (?, m)
 

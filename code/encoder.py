@@ -22,8 +22,8 @@ class BiLSTM_Encoder():
 
     def BiLSTM(self, inputs, masks, length, scope_name, dropout):
         with tf.variable_scope(scope_name):
-            lstm_fw_cell = tf.nn.rnn_cell.DropoutWrapper(tf.nn.rnn_cell.GRUCell(self.hidden_size), output_keep_prob = dropout)
-            lstm_bw_cell = tf.nn.rnn_cell.DropoutWrapper(tf.nn.rnn_cell.GRUCell(self.hidden_size), output_keep_prob = dropout)
+            lstm_fw_cell = tf.nn.rnn_cell.DropoutWrapper(tf.nn.rnn_cell.BasicLSTMCell(self.hidden_size), output_keep_prob = dropout)
+            lstm_bw_cell = tf.nn.rnn_cell.DropoutWrapper(tf.nn.rnn_cell.BasicLSTMCell(self.hidden_size), output_keep_prob = dropout)
             seq_len = tf.reduce_sum(tf.cast(masks, tf.int32), axis=1)
             outputs, _ = tf.nn.bidirectional_dynamic_rnn(
                 lstm_fw_cell, lstm_bw_cell, inputs = inputs, sequence_length = seq_len, dtype=tf.float32
@@ -122,9 +122,6 @@ class BiLSTM_Encoder():
         with tf.variable_scope('similarity') as scope:
             w_f = tf.get_variable('w_filter', shape=(self.max_question_len, 1),
                 initializer=tf.contrib.layers.xavier_initializer())
-
-            # tf.contrib.layers.apply_regularization(
-            #     tf.contrib.layers.l2_regularizer(1e-4), [w_f])
 
             if self.summary_flag:
                 variable_summaries(w_f, "filter_layer_weights")
