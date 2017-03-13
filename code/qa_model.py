@@ -71,7 +71,7 @@ class QASystem(object):
               self.base_lr,                               # Base learning rate.
               self.global_batch_num_placeholder,          # Current total batch number
               self.decay_number,                          # decay every 50 batch
-              0.99,                                       # Decay rate
+              0.999,                                       # Decay rate
               staircase = True)
             self.optimizer = tf.train.AdamOptimizer(self.learning_rate)
 

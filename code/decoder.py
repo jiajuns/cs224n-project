@@ -108,16 +108,14 @@ class BiLSTM_Decoder(Decoder):
                 variable_summaries(w_1, "output_w_1")
                 variable_summaries(w_2, "output_w_2")
 
-            temp_1 = tf.concat(2, [G, M])  # (?, m, 10h)
-            temp_1_reshape = tf.reshape(temp_1, shape=[-1, 10 * self.hidden_size])  # (?m, 10h)
-            temp_1_reshape_o = tf.nn.dropout(temp_1_reshape, dropout)
-            h_1 = tf.reshape(tf.matmul(temp_1_reshape_o, w_1), [-1, self.max_context_len]) # (?m, 10h) * (10h, 1) -> (?m, 1) -> (?, m)
+            self.batch_size = tf.shape(M)[0]
 
-            temp_2 = tf.concat(2, [G, M])  # (?, m, 10h)
-            temp_2_reshape = tf.reshape(temp_2, shape=[-1, 10 * self.hidden_size])  # (?m, 10h)
-            temp_1_reshape_o = tf.nn.dropout(temp_1_reshape, dropout)
-            h_2 = tf.reshape(tf.matmul(temp_1_reshape_o, w_2), [-1, self.max_context_len]) # (?m, 10h) * (10h, 1) -> (?m, 1) -> (?, m)
+            temp = tf.concat(2, [G, M])  # (?, m, 10h)
+            w_1_tiled = tf.tile(tf.expand_dims(w_1, 0), [self.batch_size, 1, 1])
+            w_2_tiled = tf.tile(tf.expand_dims(w_2, 0), [self.batch_size, 1, 1])
 
+            h_1 = tf.squeeze(tf.einsum('aij,ajk->aik',temp, w_1_tiled)) # (?, m, 10h) * (?, 10h, 1) -> (?, m, 1)
+            h_2 = tf.squeeze(tf.einsum('aij,ajk->aik',temp, w_2_tiled)) # (?, m, 10h) * (?, 10h, 1) -> (?, m, 1)
             return h_1, h_2
 
     def decode(self, context_mask, dropout, G):

@@ -69,7 +69,7 @@ class BiLSTM_Encoder():
         with tf.variable_scope('similarity') as scope:
             w_s1 = tf.get_variable('w_sim_1', shape=(2 * self.hidden_size, 1),
                 initializer=tf.contrib.layers.xavier_initializer())
-            w_s2 = tf.get_variable('w_sim_2', shape=(1, 2 * self.hidden_size),
+            w_s2 = tf.get_variable('w_sim_2', shape=(2 * self.hidden_size, 1),
                 initializer=tf.contrib.layers.xavier_initializer())
             w_s3 = tf.get_variable('w_sim_3', shape=(2 * self.hidden_size, 1),
                 initializer=tf.contrib.layers.xavier_initializer())
@@ -79,16 +79,16 @@ class BiLSTM_Encoder():
                 variable_summaries(w_s2, "w_sim_2")
                 variable_summaries(w_s3, "w_sim_3")
 
-            H = tf.transpose(y_c, perm=[0, 2, 1]) # # H: (?, m, 2h)
-            U = tf.transpose(y_q, perm=[0, 2, 1]) # U_T: (?, n, 2h)
+            self.batch_size = tf.shape(y_c)[0]
 
-            S_h = tf.matmul(tf.reshape(H, [-1, 2 * self.hidden_size]), w_s1)  # (?m, 2h) * (2h, 1) = (?m, 1)
-            S_u = tf.matmul(w_s2, tf.reshape(y_q, [2 * self.hidden_size, -1]))# (1, 2h) * (2h, ?n) *  = (1, ?n)
-            S_h = tf.transpose(tf.reshape(S_h, (-1, self.max_context_len, 1)), perm=[0, 2, 1])              # (?m, 1) => (?, m, 1) => (?, 1, m)
-            S_u = tf.transpose(tf.reshape(S_u, [1, -1, self.max_question_len]), perm=[1, 2, 0])             # (1, ?n) => (1, ?, n) => (?, n, 1)
+            w_s1_tiled = tf.tile(tf.expand_dims(w_s1, 0), [self.batch_size, 1, 1])
+            w_s2_tiled = tf.tile(tf.expand_dims(w_s2, 0), [self.batch_size, 1, 1])
+            S_h = tf.einsum('aji,ajk->aki', y_c, w_s1_tiled)  # (?, 2h, m) * (?, 2h, 1) => (?, 1, m)
+            S_u = tf.einsum('aji,ajk->aik', y_q, w_s2_tiled)  # (?, 2h, n) * (?, 2h, 1) => (?, n, 1)
+
             S_h_tiled = tf.tile(S_h, [1, self.max_question_len, 1])           # (?, 1, m) => (?, n, m)
             S_u_tiled = tf.tile(S_u, [1, 1, self.max_context_len])            # (?, n, 1) => (?, n, m)
-            S_cov = tf.matmul(U, y_c * w_s3)
+            S_cov = tf.einsum('aij,aik->ajk', y_q, y_c * w_s3)  # (?, 2h, n) * (?, 2h, m) => (?, n, m)
             S = S_cov + S_h_tiled + S_u_tiled
         return S
 
@@ -104,9 +104,8 @@ class BiLSTM_Encoder():
         # y_q: (?, 2h, n)
         # y_c: (?, 2h, m)
         # S: (?, n, m)
-        b = tf.nn.softmax(tf.reduce_max(S, axis=1)) # b = (?, 1, m)
-        b = tf.reshape(b, [-1, self.max_context_len, 1]) # (?, m, 1)
-        h = tf.matmul(y_c, b)  # (?, 2h, m) * (?, m, 1) = (?, 2h, 1)
+        b = tf.nn.softmax(tf.reduce_max(S, axis=1, keep_dims=True)) # b = (?, 1, m)
+        h = tf.einsum('aij,akj->aik', y_c, b) # (?, 2h, m) * (?, 1, m) => (?, 2h, 1)
         H = tf.tile(h, [1, 1, self.max_context_len])
         return H
 
