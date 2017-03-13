@@ -39,7 +39,6 @@ class QASystem(object):
         self.max_question_len = flags.max_question_len
         self.pretrained_embeddings = embeddings
         self.vocab_dim = encoder.vocab_dim
-        self.lr = flags.learning_rate
         self.n_epoch = flags.epochs
         self.batch_size = flags.batch_size
         self.rev_vocab = rev_vocab
@@ -48,6 +47,8 @@ class QASystem(object):
         self.summary_flag = flags.summary_flag
         self.max_grad_norm = flags.max_grad_norm
         self.reg_scale = flags.reg_scale
+        self.base_lr = flags.learning_rate
+        self.decay_number = flags.decay_number
         self.pred_log = "{}_{}.txt".format(flags.prediction_log, int(time.time()))
 
         # ==== set up placeholder tokens ========
@@ -58,13 +59,21 @@ class QASystem(object):
         self.start_span_placeholder = tf.placeholder(tf.int32, shape = (None, self.max_context_len))
         self.end_span_placeholder = tf.placeholder(tf.int32, shape = (None, self.max_context_len))
         self.dropout_placeholder = tf.placeholder(tf.float32, shape=(None))
+        self.global_batch_num_placeholder = tf.placeholder(tf.int32, shape=(None))
 
         # ==== assemble pieces ====
         with tf.variable_scope("qa", initializer=tf.uniform_unit_scaling_initializer(1.0)):
             context_embeddings, question_embeddings = self.setup_embeddings()
             self.h_s, self.h_e = self.setup_system(context_embeddings, question_embeddings)
             self.loss, self.masked_h_s, self.masked_h_e = self.setup_loss(self.h_s, self.h_e)
-            self.optimizer = tf.train.AdamOptimizer(self.lr)
+            # computing learning rates
+            self.learning_rate = tf.train.exponential_decay(
+              self.base_lr,                               # Base learning rate.
+              self.global_batch_num_placeholder,          # Current total batch number
+              self.decay_number,                          # decay every 50 batch
+              0.99,                                       # Decay rate
+              staircase = True)
+            self.optimizer = tf.train.AdamOptimizer(self.learning_rate)
 
         # ==== set up training/updating procedure ====
             grads_and_vars = self.optimizer.compute_gradients(self.loss)
@@ -82,7 +91,7 @@ class QASystem(object):
         :return:
         """
         with vs.variable_scope("embeddings"):
-            vec_embeddings = tf.get_variable("embeddings", initializer=self.pretrained_embeddings)
+            vec_embeddings = tf.get_variable("embeddings", initializer=self.pretrained_embeddings, trainable=False)
             context_batch_embeddings = tf.nn.embedding_lookup(vec_embeddings, self.context_placeholder)
             question_batch_embeddings = tf.nn.embedding_lookup(vec_embeddings, self.question_placeholder)
             context_embeddings = tf.reshape(context_batch_embeddings,
@@ -112,12 +121,6 @@ class QASystem(object):
         with vs.variable_scope("loss"):
             masked_h_s = tf.boolean_mask(h_s, self.context_mask_placeholder)
             masked_h_e = tf.boolean_mask(h_e, self.context_mask_placeholder)
-            # start_span = tf.boolean_mask(self.start_span_placeholder, self.context_mask_placeholder)
-            # end_span = tf.boolean_mask(self.end_span_placeholder, self.context_mask_placeholder)
-            # start_span = tf.cast(tf.boolean_mask(self.start_span_placeholder, self.context_mask_placeholder), tf.float32)
-            # end_span = tf.cast(tf.boolean_mask(self.end_span_placeholder, self.context_mask_placeholder), tf.float32)
-            # loss = tf.reduce_mean(tf.nn.l2_loss(masked_h_s - start_span)) + \
-            #     tf.reduce_mean(tf.nn.l2_loss(masked_h_e - end_span))
             loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(h_s, self.start_span_placeholder) +
                    tf.nn.softmax_cross_entropy_with_logits(h_e, self.end_span_placeholder))
             reg_vars = [tf_var for tf_var in tf.trainable_variables() if "Bias" not in tf_var.name]
@@ -127,40 +130,42 @@ class QASystem(object):
             total_loss = loss + sum(reg_loss)
         return total_loss, masked_h_s, masked_h_e
 
-    def create_feed_dict(self, train_batch, dropout):
+    def create_feed_dict(self, train_batch, dropout, global_batch_num = 0):
         feed_dict = {
             self.context_placeholder: train_batch[0],
             self.question_placeholder: train_batch[2],
             self.context_mask_placeholder: train_batch[1],
             self.question_mask_placeholder: train_batch[3],
-            self.dropout_placeholder: dropout
+            self.dropout_placeholder: dropout,
+            self.global_batch_num_placeholder: global_batch_num
         }
         if len(train_batch) == 7:
             feed_dict[self.start_span_placeholder] = train_batch[4]
             feed_dict[self.end_span_placeholder] = train_batch[5]
         return feed_dict
 
-    def optimize(self, session, train_batch):
+    def optimize(self, session, train_batch, global_batch_num):
         """
         Takes in actual data to optimize your model
         This method is equivalent to a step() function
         :return:
         """
-        input_feed = self.create_feed_dict(train_batch, 1 - self.dropout)
+        input_feed = self.create_feed_dict(train_batch, 1 - self.dropout, global_batch_num)
         if self.summary_flag:
-            output_feed = [self.train_op, self.loss, self.merged]
-            _, loss, summary = session.run(output_feed, input_feed)
+            output_feed = [self.train_op, self.loss, self.merged, self.learning_rate]
+            _, loss, summary, current_lr = session.run(output_feed, input_feed)
         else:
-            output_feed = [self.train_op, self.loss]
-            _, loss = session.run(output_feed, input_feed)
+            output_feed = [self.train_op, self.loss, self.learning_rate]
+            _, loss, current_lr = session.run(output_feed, input_feed)
             summary = None
-        return loss, summary
+        return loss, summary, current_lr
 
-    def run_epoch(self, session, train_examples, dev_examples):
-        prog = Progbar(target=int(len(train_examples) / self.batch_size))
+    def run_epoch(self, session, train_examples, dev_examples, epoch_num):
+        num_batches = int(len(train_examples) / self.batch_size)
+        prog = Progbar(target=num_batches)
         for i, batch in enumerate(minibatches(train_examples, self.batch_size)):
-            loss, summary = self.optimize(session, batch)
-            prog.update(i + 1, [("train loss", loss)])
+            loss, summary, current_lr = self.optimize(session, batch, global_batch_num = epoch_num * num_batches + i)
+            prog.update(i + 1, exact = [("train loss", loss), ("current LR", current_lr)])
             if self.summary_flag:
                 self.train_writer.add_summary(summary, i)
         logging.info("Evaluating on development data")
@@ -181,7 +186,7 @@ class QASystem(object):
             input_feed = self.create_feed_dict(batch, dropout = 1)
             output_feed = [self.loss]
             outputs = session.run(output_feed, input_feed)
-            prog.update(i + 1, [("dev loss", outputs[0])])
+            prog.update(i + 1, exact = [("dev loss", outputs[0])])
             total_cost += outputs[0]
         print("")
 
@@ -260,27 +265,34 @@ class QASystem(object):
         index = min(len(dataset), sample)
         for i in range(index):
             sample_dataset = [dataset[i]] ## batch size = 1, keep same format after indexing
+            # compute predicted answer
             (a_s, a_e) = self.answer(session, sample_dataset)
+            # getting true answer
             (a_s_true, a_e_true) = sample_dataset[0][6]
+            # formulate questions and answers for computing the accuracy
             context = sample_dataset[0][0]
             question = sample_dataset[0][2]
             question_mask = sample_dataset[0][3]
             question_string = self.formulate_answer(question, rev_vocab, 0, len(question) - 1, mask = question_mask)
             predicted_answer = self.formulate_answer(context, rev_vocab, a_s, a_e)
+            # compute the accuracy
             true_answer = self.formulate_answer(context, rev_vocab, a_s_true, a_e_true)
             f1 += f1_score(predicted_answer, true_answer)
             if exact_match_score(predicted_answer, true_answer):
                 em += 1
-            log_file.write("Question: {}\n".format(question_string))
-            log_file.write("Predicted: {}\n".format(predicted_answer))
-            log_file.write("Answer: {}\n".format(true_answer))
-            log_file.write("F1: {}\n".format(f1_score(predicted_answer, true_answer)))
-            log_file.write("EM: {}\n".format(exact_match_score(predicted_answer, true_answer)))
+            # logging predictions
+            if self.summary_flag:
+                log_file.write("Question: {}\n".format(question_string))
+                log_file.write("Predicted: {}\n".format(predicted_answer))
+                log_file.write("Answer: {}\n".format(true_answer))
+                log_file.write("F1: {}\n".format(f1_score(predicted_answer, true_answer)))
+                log_file.write("EM: {}\n".format(exact_match_score(predicted_answer, true_answer)))
         f1 /= sample
         em /= sample
         if log:
-            log_file.write("F1: {}, EM: {}, for {} samples\n".format(f1, em, sample))
-            logging.info("F1: {}, EM: {}, for {} samples".format(f1, em, sample))
+            if self.summary_flag:
+                log_file.write("F1: {}, EM: {}, for {} samples\n".format(f1, em, sample))
+            logging.info("F1: {}, EM: {}, for {} samples\n".format(f1, em, sample))
         return f1, em
 
     def train(self, session, dataset, train_dir):
@@ -324,25 +336,31 @@ class QASystem(object):
             self.train_writer = tf.summary.FileWriter(self.summaries_dir + '/train', session.graph)
 
         train_examples, dev_examples = split_train_dev(dataset)
-        logging.info("Prediction Log Dir: {}".format(self.pred_log))
+        if self.summary_flag:
+            logging.info("Prediction Log Dir: {}".format(self.pred_log))
         best_score = 100000
-        pred_log = open(self.pred_log, "w")
+        if self.summary_flag:
+            pred_log = open(self.pred_log, "w")
         for epoch in range(self.n_epoch):
-            pred_log.write("Epoch {:} out of {:}\n".format(epoch + 1, self.n_epoch))
-            pred_log.write("{}\n".format("-"*60))
+            if self.summary_flag:
+                pred_log.write("Epoch {:} out of {:}\n".format(epoch + 1, self.n_epoch))
+                pred_log.write("{}\n".format("-"*60))
             print("Epoch {:} out of {:}".format(epoch + 1, self.n_epoch))
-            dev_score = self.run_epoch(session, train_examples, dev_examples)
-            logging.info("Dev Cost: {}".format(dev_score))
+            dev_score = self.run_epoch(session, train_examples, dev_examples, epoch)
+            logging.info("Average Dev Cost: {}".format(dev_score))
             logging.info("train F1 & EM")
-            pred_log.write("Training Set Epoch {:}\n".format(epoch + 1))
-            pred_log.write("{}\n".format("-"*60))
+            if self.summary_flag:
+                pred_log.write("Training Set Epoch {:}\n".format(epoch + 1))
+                pred_log.write("{}\n".format("-"*60))
             f1, em = self.evaluate_answer(session, train_examples, self.rev_vocab, pred_log, log = True)
-            pred_log.write("{}\n".format("-"*60))
             logging.info("Dev F1 & EM")
-            pred_log.write("Dev Set Epoch {:}\n".format(epoch + 1))
-            pred_log.write("{}\n".format("-"*60))
+            if self.summary_flag:
+                pred_log.write("{}\n".format("-"*60))
+                pred_log.write("Dev Set Epoch {:}\n".format(epoch + 1))
+                pred_log.write("{}\n".format("-"*60))
             f1, em = self.evaluate_answer(session, dev_examples, self.rev_vocab, pred_log, log = True)
-            pred_log.write("{}\n".format("-"*60))
+            if self.summary_flag:
+                pred_log.write("{}\n".format("-"*60))
             if dev_score < best_score:
                 best_score = dev_score
                 print("New best dev score! Saving model in {}".format(train_dir))
