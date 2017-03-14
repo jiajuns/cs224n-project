@@ -71,7 +71,7 @@ class QASystem(object):
               self.base_lr,                               # Base learning rate.
               self.global_batch_num_placeholder,          # Current total batch number
               self.decay_number,                          # decay every 50 batch
-              0.999,                                       # Decay rate
+              0.99,                                       # Decay rate
               staircase = True)
             self.optimizer = tf.train.AdamOptimizer(self.learning_rate)
 
@@ -237,13 +237,14 @@ class QASystem(object):
     def formulate_answer(self, context, rev_vocab, start, end, mask = None):
         answer = ''
         for i in range(start, end + 1):
-            if mask is None:
-                answer +=  rev_vocab[context[i]]
-                answer += ' '
-            else:
-                if mask[i]:
+            if i < len(context):
+                if mask is None:
                     answer +=  rev_vocab[context[i]]
                     answer += ' '
+                else:
+                    if mask[i]:
+                        answer +=  rev_vocab[context[i]]
+                        answer += ' '
         return answer
 
 
@@ -365,7 +366,7 @@ class QASystem(object):
                 pred_log.write("{}\n".format("-"*60))
             if dev_score < best_score:
                 best_score = dev_score
-                print("New best dev score! Saving model in {}".format(train_dir+'/test'))
-                self.saver.save(session, train_dir+'/test')
+                print("New best dev score! Saving model in {}".format(train_dir))
+                self.saver.save(session, train_dir)
 
         return best_score
