@@ -85,6 +85,8 @@ class QASystem(object):
                 tf.summary.scalar('cross_entropy', self.loss)
                 self.merged = tf.summary.merge_all()
 
+        self.saver = tf.train.Saver()
+
     def setup_embeddings(self):
         """
         Loads distributed word representations based on placeholder tokens
@@ -332,7 +334,6 @@ class QASystem(object):
         toc = time.time()
         logging.info("Number of params: %d (retreival took %f secs)" % (num_params, toc - tic))
 
-        self.saver = tf.train.Saver()
         if self.summary_flag:
             self.train_writer = tf.summary.FileWriter(self.summaries_dir + '/train', session.graph)
 
@@ -364,7 +365,7 @@ class QASystem(object):
                 pred_log.write("{}\n".format("-"*60))
             if dev_score < best_score:
                 best_score = dev_score
-                print("New best dev score! Saving model in {}".format(train_dir))
-                self.saver.save(session, train_dir)
+                print("New best dev score! Saving model in {}".format(train_dir+'/test'))
+                self.saver.save(session, train_dir+'/test')
 
         return best_score
