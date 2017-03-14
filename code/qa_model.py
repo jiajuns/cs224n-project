@@ -50,6 +50,7 @@ class QASystem(object):
         self.base_lr = flags.learning_rate
         self.decay_number = flags.decay_number
         self.pred_log = "{}_{}.txt".format(flags.prediction_log, int(time.time()))
+        self.model_name = flags.model_name
 
         # ==== set up placeholder tokens ========
         self.context_placeholder = tf.placeholder(tf.int32, shape=(None, self.max_context_len))
@@ -171,6 +172,7 @@ class QASystem(object):
             prog.update(i + 1, exact = [("train loss", loss), ("current LR", current_lr)])
             if self.summary_flag:
                 self.train_writer.add_summary(summary, i)
+        print("")
         logging.info("Evaluating on development data")
         validate_cost = self.test(session, dev_examples)
         return validate_cost
@@ -193,7 +195,7 @@ class QASystem(object):
             total_cost += outputs[0]
         print("")
 
-        return total_cost/num_batches
+        return total_cost/(i + 1)
 
 
     ###### Under Work! ##########
@@ -366,7 +368,7 @@ class QASystem(object):
                 pred_log.write("{}\n".format("-"*60))
             if dev_score < best_score:
                 best_score = dev_score
-                print("New best dev score! Saving model in {}".format(train_dir))
-                self.saver.save(session, train_dir)
+                print("New best dev score! Saving model in {}".format(train_dir + "/" + self.model_name))
+                self.saver.save(session, train_dir + "/" + self.model_name)
 
         return best_score
