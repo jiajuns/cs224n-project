@@ -14,32 +14,39 @@ import numpy as np
 from six.moves import xrange
 import tensorflow as tf
 
+from qa_model import QASystem
 from decoder import BiLSTM_Decoder as Decoder
 from encoder import BiLSTM_Encoder as Encoder
-from qa_model import QASystem
 from preprocessing.squad_preprocess import data_from_json, maybe_download, squad_base_url, \
     invert_map, tokenize, token_idx_map
 import qa_data
+from util import load_embeddings, pad_sequence
+from train import FLAGS
 
 import logging
 
 logging.basicConfig(level=logging.INFO)
 
-FLAGS = tf.app.flags.FLAGS
-
-tf.app.flags.DEFINE_float("learning_rate", 0.001, "Learning rate.")
-tf.app.flags.DEFINE_float("dropout", 0.15, "Fraction of units randomly dropped on non-recurrent connections.")
-tf.app.flags.DEFINE_integer("batch_size", 10, "Batch size to use during training.")
-tf.app.flags.DEFINE_integer("epochs", 0, "Number of epochs to train.")
-tf.app.flags.DEFINE_integer("state_size", 200, "Size of each model layer.")
-tf.app.flags.DEFINE_integer("embedding_size", 100, "Size of the pretrained vocabulary.")
-tf.app.flags.DEFINE_integer("output_size", 750, "The output size of your model.")
-tf.app.flags.DEFINE_integer("keep", 0, "How many checkpoints to keep, 0 indicates keep all.")
-tf.app.flags.DEFINE_string("train_dir", "train", "Training directory (default: ./train).")
-tf.app.flags.DEFINE_string("log_dir", "log", "Path to store log and flag files (default: ./log)")
-tf.app.flags.DEFINE_string("vocab_path", "data/squad/vocab.dat", "Path to vocab file (default: ./data/squad/vocab.dat)")
-tf.app.flags.DEFINE_string("embed_path", "", "Path to the trimmed GLoVe embedding (default: ./data/squad/glove.trimmed.{embedding_size}.npz)")
+# FLAGS = tf.app.flags.FLAGS
+# tf.app.flags.DEFINE_float("learning_rate", 0.001, "Learning rate.")
+# tf.app.flags.DEFINE_float("dropout", 0.15, "Fraction of units randomly dropped on non-recurrent connections.")
+# tf.app.flags.DEFINE_integer("batch_size", 10, "Batch size to use during training.")
+# tf.app.flags.DEFINE_integer("epochs", 0, "Number of epochs to train.")
+# tf.app.flags.DEFINE_integer("state_size", 200, "Size of each model layer.")
+# tf.app.flags.DEFINE_integer("embedding_size", 100, "Size of the pretrained vocabulary.")
+# tf.app.flags.DEFINE_integer("output_size", 750, "The output size of your model.")
+# tf.app.flags.DEFINE_integer("keep", 0, "How many checkpoints to keep, 0 indicates keep all.")
+# tf.app.flags.DEFINE_string("train_dir", "train", "Training directory (default: ./train).")
+# tf.app.flags.DEFINE_string("log_dir", "log", "Path to store log and flag files (default: ./log)")
+# tf.app.flags.DEFINE_string("vocab_path", "data/squad/vocab.dat", "Path to vocab file (default: ./data/squad/vocab.dat)")
+# tf.app.flags.DEFINE_string("embed_path", "", "Path to the trimmed GLoVe embedding (default: ./data/squad/glove.trimmed.{embedding_size}.npz)")
 tf.app.flags.DEFINE_string("dev_path", "data/squad/dev-v1.1.json", "Path to the JSON dev set to evaluate against (default: ./data/squad/dev-v1.1.json)")
+# tf.app.flags.DEFINE_integer("max_context_len", 500, "max length of the context input")
+# tf.app.flags.DEFINE_integer("max_question_len", 100, "max length of the question input")
+# tf.app.flags.DEFINE_string("prediction_log", "log/prediction", "Path to prediction file")
+# tf.app.flags.DEFINE_bool('summary_flag', True, 'if true log summary')
+# tf.app.flags.DEFINE_float('reg_scale', 0.00005, 'regularization scale')
+# tf.app.flags.DEFINE_string('summaries_dir', 'summary/', 'tensorboard summary dir')
 
 def initialize_model(session, model, train_dir):
     ckpt = tf.train.get_checkpoint_state(train_dir)
@@ -53,7 +60,6 @@ def initialize_model(session, model, train_dir):
         logging.info('Num params: %d' % sum(v.get_shape().num_elements() for v in tf.trainable_variables()))
     return model
 
-
 def initialize_vocab(vocab_path):
     if tf.gfile.Exists(vocab_path):
         rev_vocab = []
@@ -64,7 +70,6 @@ def initialize_vocab(vocab_path):
         return vocab, rev_vocab
     else:
         raise ValueError("Vocabulary file %s not found.", vocab_path)
-
 
 def read_dataset(dataset, tier, vocab):
     """Reads the dataset, extracts context, question, answer,
@@ -101,7 +106,6 @@ def read_dataset(dataset, tier, vocab):
 
     return context_data, query_data, question_uuid_data
 
-
 def prepare_dev(prefix, dev_filename, vocab):
     # Don't check file size, since we could be using other datasets
     dev_dataset = maybe_download(squad_base_url, dev_filename, prefix)
@@ -111,6 +115,20 @@ def prepare_dev(prefix, dev_filename, vocab):
 
     return context_data, question_data, question_uuid_data
 
+def convert_data_to_list(data):
+    ret = []
+    for line in data:
+        ids_list = [int(i) for i in line.strip().split(" ")]
+        ret.append(ids_list)
+    return ret
+
+def vectorize(context, context_mask, question, question_mask):
+    '''
+    Vectorize dataset into
+    [(context1, context_mask1, quesiton1, question_mask1, span1),
+    (context2, context_mask2, quesiton2, question_mask2, span2),...]
+    '''
+    return list(zip(context, context_mask, question, question_mask))
 
 def generate_answers(sess, model, dataset, rev_vocab):
     """
@@ -132,16 +150,30 @@ def generate_answers(sess, model, dataset, rev_vocab):
     :return:
     """
     answers = {}
-    context_data, question_data, question_uuid_data = dataset
+    (context, question, question_uuid_data) = dataset
+    context_data = convert_data_to_list(context)
+    question_data = convert_data_to_list(question)
+    context_padded, context_mask = pad_sequence(context_data, FLAGS.max_context_len)
+    question_padded, question_mask = pad_sequence(question_data, FLAGS.max_question_len)
+    input_data = vectorize(context_padded, context_mask, question_padded, question_mask)
 
-    for i in xrange(len(question_uuid_data)):
+    minibatch_size = 10
+    for start in tqdm(range(0, len(question_uuid_data), minibatch_size), desc="predicting on test"):
+        h_s, h_e = model.decode(sess, input_data[start:start + minibatch_size])
+        for i in range(minibatch_size):
+            a_s = np.argmax(h_s[i])
+            a_e = np.argmax(h_e[i])
+            if a_s > a_e:
+                k = a_e
+                a_e = a_s
+                a_s = k
 
-        start,end = model.answer(sess, question_data[i]) # the second input maybe wrong
-        an = formulate_answer(context_data[i], rev_vocab, start, end, mask = None)
-        answers[question_uuid_data[i]] = an
-
+            uuid = question_uuid_data[start + i]
+            sample_dataset = [input_data[start + i]]
+            context = sample_dataset[0][0]
+            predicted_answer = model.formulate_answer(context, rev_vocab, a_s, a_e)
+            answers[uuid] = predicted_answer
     return answers
-
 
 def get_normalized_train_dir(train_dir):
     """
@@ -162,7 +194,6 @@ def get_normalized_train_dir(train_dir):
 def main(_):
 
     vocab, rev_vocab = initialize_vocab(FLAGS.vocab_path)
-
     embed_path = FLAGS.embed_path or pjoin("data", "squad", "glove.trimmed.{}.npz".format(FLAGS.embedding_size))
 
     if not os.path.exists(FLAGS.log_dir):
@@ -185,10 +216,12 @@ def main(_):
     # ========= Model-specific =========
     # You must change the following code to adjust to your model
 
+    embed_path = FLAGS.embed_path or pjoin("data", "squad", "glove.trimmed.{}.npz".format(FLAGS.embedding_size))
+    vocab_path = FLAGS.vocab_path or pjoin(FLAGS.data_dir, "vocab.dat")
+    vocab, rev_vocab = initialize_vocab(vocab_path)
     embedding = tf.constant(load_embeddings(embed_path), dtype = tf.float32)
-    encoder = Encoder(FLAGS.state_size, FLAGS.max_context_len, FLAGS.max_question_len, FLAGS.embedding_size)
-    decoder = Decoder(FLAGS.state_size, FLAGS.max_context_len, FLAGS.max_question_len, FLAGS.output_size)
-
+    encoder = Encoder(FLAGS.state_size, FLAGS.max_context_len, FLAGS.max_question_len, FLAGS.embedding_size, FLAGS.summary_flag, FLAGS.reg_scale)
+    decoder = Decoder(FLAGS.state_size, FLAGS.max_context_len, FLAGS.max_question_len, FLAGS.output_size, FLAGS.summary_flag, FLAGS.reg_scale)
     qa = QASystem(encoder, decoder, FLAGS, embedding, rev_vocab)
 
     with tf.Session() as sess:
@@ -199,8 +232,6 @@ def main(_):
         # write to json file to root dir
         with io.open('dev-prediction.json', 'w', encoding='utf-8') as f:
             f.write(unicode(json.dumps(answers, ensure_ascii=False)))
-
-
 
 
 if __name__ == "__main__":
