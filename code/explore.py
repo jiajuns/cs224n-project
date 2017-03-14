@@ -28,6 +28,17 @@ with open('data/squad/val.ids.question', 'r') as file:
         question_len.append(len(line))
 print("Max Sentence Length for cuestion is {}".format(str(question_max_len)))
 
+answer_span_max = []
+with open('data/squad/train.span', 'r') as file:
+    for line in file:
+        ids_list = [int(i) for i in line.strip().split(" ")]
+        answer_span_max.append(max(ids_list))
+
+with open('data/squad/val.span', 'r') as file:
+    for line in file:
+        ids_list = [int(i) for i in line.strip().split(" ")]
+        answer_span_max.append(max(ids_list))
+print("Max Answer Index  {}".format(max(answer_span_max)))
 
 num_bins = 50
 
@@ -47,4 +58,13 @@ ax.set_xlabel('question Length')
 ax.set_ylabel('Count')
 ax.set_title('Histogram of Question Length')
 plt.savefig('plots/question_hist.png')
+# the histogram of the data
+fig, ax = plt.subplots()
+n, bins, patches = ax.hist(answer_span_max, num_bins)
+plt.axvline(max(answer_span_max), color='k', linestyle='solid')
+ax.set_xlabel('Max Answer Indices')
+ax.set_ylabel('Count')
+ax.set_title('Histogram of Max Answer Indices')
+plt.savefig('plots/span_max_hist.png')
+
 
