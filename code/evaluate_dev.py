@@ -13,7 +13,7 @@ import numpy as np
 from six.moves import xrange
 import tensorflow as tf
 
-from qa_model import QASystem, formulate_answer
+from qa_model import QASystem
 from decoder import BiLSTM_Decoder as Decoder
 from encoder import BiLSTM_Encoder as Encoder
 from util import load_and_preprocess_data, load_embeddings,split_train_dev
@@ -65,12 +65,26 @@ def initialize_vocab(vocab_path):
     else:
         raise ValueError("Vocabulary file %s not found.", vocab_path)
 
+def formulate_answer(context, rev_vocab, start, end, mask = None):
+    answer = ''
+    for i in range(start, end + 1):
+        if i < len(context):
+            if mask is None:
+                answer +=  rev_vocab[context[i]]
+                answer += ' '
+            else:
+                if mask[i]:
+                    answer +=  rev_vocab[context[i]]
+                    answer += ' '
+    return answer
+
 def construct_result(index, f1, RoW, dataset, true_s, true_e, pre_s, pre_e, pre_ans, true_ans, rev_vocab):
     context = dataset[0]
     context_mask = dataset[1]
     question = dataset[2]
     question_mask = dataset[3]
     machine_list = [index, f1, RoW, len(context), len(question), abs(true_s - true_e), true_s, true_e]
+    list_str = ' '.join(str(value) for value in machine_list)
     question_string = formulate_answer(question, rev_vocab, 0, len(question) - 1, mask = question_mask)
     context_string = formulate_answer(context, rev_vocab, 0, len(context) - 1, mask = context_mask)
     human_dic = {
@@ -79,7 +93,7 @@ def construct_result(index, f1, RoW, dataset, true_s, true_e, pre_s, pre_e, pre_
         'true_ans': true_ans,
         'predict_ans': pre_ans
     }
-    return machine_list, human_dic
+    return list_str, human_dic
 
 def generate_answers(sess, model, dataset, rev_vocab):
     """
@@ -98,9 +112,10 @@ def generate_answers(sess, model, dataset, rev_vocab):
     minibatch_size = 100
     num_batches = int(len(dataset) / minibatch_size)
     average_loss = model.test(sess, dataset)
+    print('average loss {}'.format(average_loss))
     for batch in range(0, num_batches):
         start = batch * minibatch_size
-            print("batch {} out of {}".format(batch+1, num_batches))
+        print("batch {} out of {}".format(batch+1, num_batches))
         batch_f1 = 0.
         batch_em = 0.
         h_s, h_e = model.decode(sess, dataset[start:start + minibatch_size])
@@ -130,7 +145,10 @@ def generate_answers(sess, model, dataset, rev_vocab):
 
             # output result
             tmp_list, tmp_dict = construct_result(
-                index, f1, RoW, sample_dataset, a_s_true, a_e_true, a_s, a_e, predicted_answer, true_answer, rev_vocab
+                index, f1, RoW, sample_dataset,
+                a_s_true, a_e_true,
+                a_s, a_e,
+                predicted_answer, true_answer, rev_vocab
             )
             output_list.append(tmp_list)
             output_dict[index] = tmp_dict
@@ -141,10 +159,20 @@ def generate_answers(sess, model, dataset, rev_vocab):
     print("overall F1: {}".format(overall_f1/(num_batches*minibatch_size)))
     print("overall EM: {}".format(overall_em/(num_batches*minibatch_size)))
     print("overall val loss: {}".format(average_loss))
+    return output_list, output_dict
+
+def store_result(output_list, output_dict, train_dir):
+    machine_file_dir = os.path.join(train_dir, 'validation_predict.txt')
+    human_file_dir = os.path.join(train_dir, 'validation_predict.json')
+    # dump machine read file
+    with open(machine_file_dir, 'w') as outfile:
+        outfile.write("\n".join(output_list))
+    with open(human_file_dir, 'w') as outfile:
+        json.dump(output_dict, outfile)
 
 def main(_):
     #======Fill the model name=============
-    train_dir = "train/baseline_1"
+    train_dir = "train/test"
     #======================================
     vocab, rev_vocab = initialize_vocab(FLAGS.vocab_path)
     embed_path = FLAGS.embed_path or pjoin("data", "squad", "glove.trimmed.{}.npz".format(FLAGS.embedding_size))
@@ -172,8 +200,8 @@ def main(_):
     with tf.Session() as sess:
         train_dir = get_normalized_train_dir(train_dir)
         qa = initialize_model(sess, qa, train_dir)
-        generate_answers(sess, qa, val_data, rev_vocab)
-
+        output_list, output_dict = generate_answers(sess, qa, val_data, rev_vocab)
+        store_result(output_list, output_dict, train_dir)
 
 if __name__ == "__main__":
   tf.app.run()
