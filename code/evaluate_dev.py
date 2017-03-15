@@ -100,7 +100,7 @@ def generate_answers(sess, model, dataset, rev_vocab):
     average_loss = model.test(sess, dataset)
     for batch in range(0, num_batches):
         start = batch * minibatch_size
-        print("batch {} out of {}".format(batch+1, num_batches))
+            print("batch {} out of {}".format(batch+1, num_batches))
         batch_f1 = 0.
         batch_em = 0.
         h_s, h_e = model.decode(sess, dataset[start:start + minibatch_size])

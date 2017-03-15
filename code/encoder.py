@@ -12,13 +12,13 @@ from util import variable_summaries
 logging.basicConfig(level=logging.INFO)
 
 class BiLSTM_Encoder():
-    def __init__(self, hidden_size, max_context_len, max_question_len, vocab_dim, summary_flag, reg_scale):
+    def __init__(self, hidden_size, max_context_len, max_question_len, vocab_dim, summary_flag, filter_flag):
         self.hidden_size = hidden_size
         self.vocab_dim = vocab_dim
         self.max_context_len = max_context_len
         self.max_question_len = max_question_len
         self.summary_flag = summary_flag
-        self.reg_scale = reg_scale
+        self.filter_flag = filter_flag
 
     def BiLSTM(self, inputs, masks, length, scope_name, dropout):
         with tf.variable_scope(scope_name):
@@ -149,10 +149,12 @@ class BiLSTM_Encoder():
                  It can be context-level representation, word-level representation,
                  or both.
         """
-        #filtered_context = self.filter_layer(question, context)
+        if self.filter_flag:
+            filtered_context = self.filter_layer(question, context)
+            yc = self.BiLSTM(filtered_context, context_mask, self.max_context_len, 'context_BiLSTM', dropout) # (?, 2h, m)
+        else:
+            yc = self.BiLSTM(context, context_mask, self.max_context_len, 'context_BiLSTM', dropout) # (?, 2h, m)
         yq = self.BiLSTM(question, question_mask, self.max_question_len, 'question_BiLSTM', dropout) # (?, 2h, n)
-        #yc = self.BiLSTM(filtered_context, context_mask, self.max_context_len, 'context_BiLSTM', dropout) # (?, 2h, m)
-        yc = self.BiLSTM(context, context_mask, self.max_context_len, 'context_BiLSTM', dropout) # (?, 2h, m)
         return yq, yc, self.bi_attention(yq, yc)
 
 class Dummy_Encoder(object):

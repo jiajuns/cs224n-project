@@ -15,17 +15,22 @@ from util import load_and_preprocess_data, load_embeddings
 import logging
 
 logging.basicConfig(level=logging.INFO)
+#=======Change These===============================
+tf.app.flags.DEFINE_string("model_name", "BiDAF_bilinear_1", "name of the model")
+tf.app.flags.DEFINE_string("train_dir", "train/BiDAF_bilinear_1", "Training directory, INCLUDE model name!!")
+tf.app.flags.DEFINE_string('summaries_dir', 'summary/BiDAF_bilinear_1', 'tensorboard summary dir')
+tf.app.flags.DEFINE_integer("state_size", 100, "Size of each model layer.")
+tf.app.flags.DEFINE_bool('filter_flag', False, 'if true, use filter layer')
+#==================================================
 
-tf.app.flags.DEFINE_string("model_name", "full_baseline_model", "name of the model")
-tf.app.flags.DEFINE_string("train_dir", "train/full_baseline_model", "Training directory, INCLUDE model name!!")
+
 tf.app.flags.DEFINE_integer("decay_number", 50, "Decay by 0.99 every decay_number")
 tf.app.flags.DEFINE_float("learning_rate", 0.001, "Base Learning rate.")
-tf.app.flags.DEFINE_float("max_grad_norm", 5.0, "Clip gradients to this norm.")
+tf.app.flags.DEFINE_float("max_grad_norm", 10.0, "Clip gradients to this norm.")
 tf.app.flags.DEFINE_float("dropout", 0.20, "Fraction of units randomly dropped on non-recurrent connections.")
 tf.app.flags.DEFINE_integer("train_size", 81381, "Size of the training data")
 tf.app.flags.DEFINE_integer("batch_size", 150, "Batch size to use during training.")
 tf.app.flags.DEFINE_integer("epochs", 15, "Number of epochs to train.")
-tf.app.flags.DEFINE_integer("state_size", 150, "Size of each model layer.")
 tf.app.flags.DEFINE_integer("output_size", 2, "The output size of your model.")
 tf.app.flags.DEFINE_integer("embedding_size", 100, "Size of the pretrained vocabulary.")
 tf.app.flags.DEFINE_string("data_dir", "data/squad", "SQuAD directory (default ./data/squad)")
@@ -38,10 +43,7 @@ tf.app.flags.DEFINE_string("vocab_path", "data/squad/vocab.dat", "Path to vocab 
 tf.app.flags.DEFINE_string("embed_path", "", "Path to the trimmed GLoVe embedding (default: ./data/squad/glove.trimmed.{embedding_size}.npz)")
 tf.app.flags.DEFINE_integer("max_context_len", 605, "max length of the context input")
 tf.app.flags.DEFINE_integer("max_question_len", 100, "max length of the question input")
-tf.app.flags.DEFINE_string('summaries_dir', 'summary/', 'tensorboard summary dir')
-tf.app.flags.DEFINE_string("prediction_log", "log/prediction", "Path to prediction file")
 tf.app.flags.DEFINE_bool('summary_flag', True, 'if true log summary')
-tf.app.flags.DEFINE_float('reg_scale', 0.00005, 'regularization scale')
 FLAGS = tf.app.flags.FLAGS
 
 def initialize_model(session, model, train_dir):
@@ -93,8 +95,8 @@ def main(_):
     vocab_path = FLAGS.vocab_path or pjoin(FLAGS.data_dir, "vocab.dat")
     vocab, rev_vocab = initialize_vocab(vocab_path)
     embedding = tf.constant(load_embeddings(embed_path), dtype = tf.float32)
-    encoder = Encoder(FLAGS.state_size, FLAGS.max_context_len, FLAGS.max_question_len, FLAGS.embedding_size, FLAGS.summary_flag, FLAGS.reg_scale)
-    decoder = Decoder(FLAGS.state_size, FLAGS.max_context_len, FLAGS.max_question_len, FLAGS.output_size, FLAGS.summary_flag, FLAGS.reg_scale)
+    encoder = Encoder(FLAGS.state_size, FLAGS.max_context_len, FLAGS.max_question_len, FLAGS.embedding_size, FLAGS.summary_flag, FLAGS.filter_flag)
+    decoder = Decoder(FLAGS.state_size, FLAGS.max_context_len, FLAGS.max_question_len, FLAGS.output_size, FLAGS.summary_flag)
 
     qa = QASystem(encoder, decoder, FLAGS, embedding, rev_vocab)
 
