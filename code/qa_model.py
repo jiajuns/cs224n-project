@@ -331,7 +331,7 @@ class QASystem(object):
         #     logging.info("F1: {}, EM: {}, for {} samples\n".format(f1, em, sample))
         return f1, em
 
-    def train(self, session, dataset, train_dir):
+    def train(self, session, train_examples, dev_examples, train_dir):
         """
         Implement main training loop
 
@@ -370,7 +370,7 @@ class QASystem(object):
         if self.summary_flag:
             self.train_writer = tf.summary.FileWriter(self.summaries_dir + '/train', session.graph)
 
-        train_examples, dev_examples = split_train_dev(dataset)
+        #train_examples, dev_examples = split_train_dev(dataset)
         if self.summary_flag:
             logging.info("Prediction Log Dir: {}".format(self.pred_log))
         best_score = 100000

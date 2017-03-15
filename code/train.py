@@ -112,7 +112,7 @@ def main(_):
         initialize_model(sess, qa, load_train_dir)
 
         save_train_dir = get_normalized_train_dir(FLAGS.train_dir)
-        qa.train(sess, train_data, save_train_dir)
+        qa.train(sess, train_data, val_data, save_train_dir)
 
         #qa.evaluate_answer(sess, train_data, vocab, FLAGS.evaluate, log=True)
 
