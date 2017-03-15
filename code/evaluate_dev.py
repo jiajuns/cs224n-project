@@ -13,7 +13,7 @@ import numpy as np
 from six.moves import xrange
 import tensorflow as tf
 
-from qa_model import QASystem
+from qa_model import QASystem, formulate_answer
 from decoder import BiLSTM_Decoder as Decoder
 from encoder import BiLSTM_Encoder as Encoder
 from util import load_and_preprocess_data, load_embeddings,split_train_dev
@@ -65,6 +65,21 @@ def initialize_vocab(vocab_path):
     else:
         raise ValueError("Vocabulary file %s not found.", vocab_path)
 
+def construct_result(index, f1, RoW, dataset, true_s, true_e, pre_s, pre_e, pre_ans, true_ans, rev_vocab):
+    context = dataset[0]
+    context_mask = dataset[1]
+    question = dataset[2]
+    question_mask = dataset[3]
+    machine_list = [index, f1, RoW, len(context), len(question), abs(true_s - true_e), true_s, true_e]
+    question_string = formulate_answer(question, rev_vocab, 0, len(question) - 1, mask = question_mask)
+    context_string = formulate_answer(context, rev_vocab, 0, len(context) - 1, mask = context_mask)
+    human_dic = {
+        'context': context_string,
+        'question': question_string,
+        'true_ans': true_ans,
+        'predict_ans': pre_ans
+    }
+    return machine_list, human_dic
 
 def generate_answers(sess, model, dataset, rev_vocab):
     """
@@ -77,9 +92,12 @@ def generate_answers(sess, model, dataset, rev_vocab):
     """
     overall_f1 = 0.
     overall_em = 0.
+    index = 1
+    output_dict = {} # for human
+    output_list = list() # for machine
     minibatch_size = 100
     num_batches = int(len(dataset) / minibatch_size)
-    #num_batches = 10
+    average_loss = model.test(sess, dataset)
     for batch in range(0, num_batches):
         start = batch * minibatch_size
         print("batch {} out of {}".format(batch+1, num_batches))
@@ -97,23 +115,33 @@ def generate_answers(sess, model, dataset, rev_vocab):
             sample_dataset = dataset[start + i]
             context = sample_dataset[0]
             (a_s_true, a_e_true) = sample_dataset[6]
-            # formulate questions and answers for computing the accuracy
-            # question = sample_dataset[0][2]
-            # question_mask = sample_dataset[0][3]
-            # question_string = model.formulate_answer(question, rev_vocab, 0, len(question) - 1, mask = question_mask)
             predicted_answer = model.formulate_answer(context, rev_vocab, a_s, a_e)
             true_answer = model.formulate_answer(context, rev_vocab, a_s_true, a_e_true)
             f1 = f1_score(predicted_answer, true_answer)
             overall_f1 += f1
             batch_f1 += f1
+
             if exact_match_score(predicted_answer, true_answer):
                 overall_em += 1
                 batch_em += 1
+                RoW = 1
+            else:
+                RoW = 0
+
+            # output result
+            tmp_list, tmp_dict = construct_result(
+                index, f1, RoW, sample_dataset, a_s_true, a_e_true, a_s, a_e, predicted_answer, true_answer, rev_vocab
+            )
+            output_list.append(tmp_list)
+            output_dict[index] = tmp_dict
+            index += 1
+
         print("batch F1: {}".format(batch_f1/minibatch_size))
         print("batch EM: {}".format(batch_em/minibatch_size))
     print("overall F1: {}".format(overall_f1/(num_batches*minibatch_size)))
     print("overall EM: {}".format(overall_em/(num_batches*minibatch_size)))
-    
+    print("overall val loss: {}".format(average_loss))
+
 def main(_):
     #======Fill the model name=============
     train_dir = "train/baseline_1"
@@ -127,7 +155,7 @@ def main(_):
     logging.getLogger().addHandler(file_handler)
 
     print(vars(FLAGS))
-    
+
     # ========= Load Dataset =========
     train_data,val_data  = load_and_preprocess_data(FLAGS.data_dir, FLAGS.max_context_len, FLAGS.max_question_len, size = FLAGS.train_size)
     # ========= Model-specific =========
@@ -137,8 +165,8 @@ def main(_):
     vocab_path = FLAGS.vocab_path or pjoin(FLAGS.data_dir, "vocab.dat")
     vocab, rev_vocab = initialize_vocab(vocab_path)
     embedding = tf.constant(load_embeddings(embed_path), dtype = tf.float32)
-    encoder = Encoder(FLAGS.state_size, FLAGS.max_context_len, FLAGS.max_question_len, FLAGS.embedding_size, FLAGS.summary_flag, FLAGS.reg_scale)
-    decoder = Decoder(FLAGS.state_size, FLAGS.max_context_len, FLAGS.max_question_len, FLAGS.output_size, FLAGS.summary_flag, FLAGS.reg_scale)
+    encoder = Encoder(FLAGS.state_size, FLAGS.max_context_len, FLAGS.max_question_len, FLAGS.embedding_size, FLAGS.summary_flag, FLAGS.filter_flag)
+    decoder = Decoder(FLAGS.state_size, FLAGS.max_context_len, FLAGS.max_question_len, FLAGS.output_size, FLAGS.summary_flag)
     qa = QASystem(encoder, decoder, FLAGS, embedding, rev_vocab)
 
     with tf.Session() as sess:
