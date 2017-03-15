@@ -40,6 +40,10 @@ def get_normalized_train_dir(train_dir):
 
 def initialize_model(session, model, train_dir):
     ckpt = tf.train.get_checkpoint_state(train_dir)
+    if ckpt:
+        print("found model")
+    else:
+        print("cant'find model")
     v2_path = ckpt.model_checkpoint_path + ".index" if ckpt else ""
     if ckpt and (tf.gfile.Exists(ckpt.model_checkpoint_path) or tf.gfile.Exists(v2_path)):
         logging.info("Reading model parameters from %s" % ckpt.model_checkpoint_path)
@@ -112,7 +116,7 @@ def generate_answers(sess, model, dataset, rev_vocab):
     
 def main(_):
     #======Fill the model name=============
-    train_dir = "train/full_baseline_model_bilinear_150"
+    train_dir = "train/baseline_1"
     #======================================
     vocab, rev_vocab = initialize_vocab(FLAGS.vocab_path)
     embed_path = FLAGS.embed_path or pjoin("data", "squad", "glove.trimmed.{}.npz".format(FLAGS.embedding_size))
