@@ -75,8 +75,9 @@ def generate_answers(sess, model, dataset, rev_vocab):
     overall_em = 0.
     minibatch_size = 100
     num_batches = len(dataset) / minibatch_size
-    for start in range(0, num_batches):
-    #for start in tqdm(range(0, test_size, minibatch_size), desc="predicting on test"):
+    for batch in range(0, num_batches):
+        start = batch * minibatch_size
+        print("batch {} out of {}".format{batch+1, num_batches})
         batch_f1 = 0.
         batch_em = 0.
         h_s, h_e = model.decode(sess, dataset[start:start + minibatch_size])
