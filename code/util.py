@@ -33,21 +33,22 @@ def load_and_preprocess_data(data_dir, max_context_len = 2834, max_question_len 
                         train_question_padded, train_question_mask,
                         start_span_vector, end_span_vector, train_span)
     logger.info("Done. Read %d sentences", len(train_data))
-    # logger.info("Loading validation data...")
-    # val_context = read_data_from_file(data_dir + '/val.ids.context')
-    # val_question = read_data_from_file(data_dir + '/val.ids.question')
-    # val_span = read_data_from_file(data_dir + '/val.span')
-    # val_context_padded, val_context_mask = pad_sequence(val_context, max_context_len)
-    # val_question_padded, val_question_mask = pad_sequence(val_question, max_question_len)
-    # val_span_processed = preprocess_span(val_span, val_context_padded)
-    # val_data = vectorize(val_context_padded, val_context_mask,
-    #                     val_question_padded, val_question_mask, val_span_processed, val_span)
-    # logger.info("Done. Read %d sentences", len(val_data))
-    # logger.info("Data Loaded. Took %d seconds", time.time()-start)
-    return train_data,1
-    #return train_data, val_data
+    logger.info("Loading validation data...")
+    val_context = read_data_from_file(data_dir + '/val.ids.context')
+    val_question = read_data_from_file(data_dir + '/val.ids.question')
+    val_span = read_data_from_file(data_dir + '/val.span')
+    val_context_padded, val_context_mask = pad_sequence(val_context, max_context_len)
+    val_question_padded, val_question_mask = pad_sequence(val_question, max_question_len)
+    val_start_span_vector, val_end_span_vector = preprocess_span(val_span, val_context_padded)
+    val_data = vectorize(val_context_padded, val_context_mask,
+                        val_question_padded, val_question_mask, 
+                        val_start_span_vector, val_end_span_vector, val_span)
+    logger.info("Done. Read %d sentences", len(val_data))
+    logger.info("Data Loaded. Took %d seconds", time.time()-start)
+    #return train_data,1
+    return train_data, val_data
 
-def read_data_from_file(dir, size):
+def read_data_from_file(dir, size = None):
     ret = []
     with open(dir, 'r') as file:
         count = 0
