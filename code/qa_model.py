@@ -213,14 +213,14 @@ class QASystem(object):
         h_e = outputs[1]
         return h_s, h_e
 
-    def answer(self, session, test_x):
+    # def answer(self, session, test_x):
 
-        h_s, h_e = self.decode(session, test_x)
-        a_s = np.argmax(h_s)
-        a_e = np.argmax(h_e)
-        if a_s > a_e:
-            return a_e, a_s
-        return a_s, a_e
+    #     h_s, h_e = self.decode(session, test_x)
+    #     a_s = np.argmax(h_s)
+    #     a_e = np.argmax(h_e)
+    #     if a_s > a_e:
+    #         return a_e, a_s
+    #     return a_s, a_e
 
     def validate(self, sess, valid_dataset):
         """
@@ -273,7 +273,7 @@ class QASystem(object):
         for batch in range(0, num_batches):
             start = batch * minibatch_size
             end = min(len(dataset), start + minibatch_size)
-            h_s, h_e = model.decode(sess, dataset[start:end])
+            h_s, h_e = self.decode(session, dataset[start:end])
             for i in range(minibatch_size):
                 a_s = np.argmax(h_s[i])
                 a_e = np.argmax(h_e[i])
@@ -329,7 +329,7 @@ class QASystem(object):
         #     if self.summary_flag:
         #         log_file.write("F1: {}, EM: {}, for {} samples\n".format(f1, em, sample))
         #     logging.info("F1: {}, EM: {}, for {} samples\n".format(f1, em, sample))
-        return f1, em
+        return overall_f1, overall_em
 
     def train(self, session, train_examples, dev_examples, train_dir):
         """
