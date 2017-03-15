@@ -250,7 +250,7 @@ class QASystem(object):
         return answer
 
 
-    def evaluate_answer(self, session, dataset, rev_vocab, log_file, sample=100, log=False):
+    def evaluate_answer(self, session, dataset, rev_vocab, log_file, sample=300, log=False):
         """
         Evaluate the model's performance using the harmonic mean of F1 and Exact Match (EM)
         with the set of true answer labels
@@ -265,40 +265,70 @@ class QASystem(object):
         :param log: whether we print to std out stream
         :return:
         """
+        sample = min(sample, len(dataset))
+        overall_f1 = 0.
+        overall_em = 0.
+        minibatch_size = 100
+        num_batches = int(sample / minibatch_size)
+        for batch in range(0, num_batches):
+            start = batch * minibatch_size
+            end = min(len(dataset), start + minibatch_size)
+            h_s, h_e = model.decode(sess, dataset[start:end])
+            for i in range(minibatch_size):
+                a_s = np.argmax(h_s[i])
+                a_e = np.argmax(h_e[i])
+                if a_s > a_e:
+                    k = a_e
+                    a_e = a_s
+                    a_s = k
 
-        f1 = 0.
-        em = 0.
-        index = min(len(dataset), sample)
-        for i in range(index):
-            sample_dataset = [dataset[i]] ## batch size = 1, keep same format after indexing
-            # compute predicted answer
-            (a_s, a_e) = self.answer(session, sample_dataset)
-            # getting true answer
-            (a_s_true, a_e_true) = sample_dataset[0][6]
-            # formulate questions and answers for computing the accuracy
-            context = sample_dataset[0][0]
-            question = sample_dataset[0][2]
-            question_mask = sample_dataset[0][3]
-            question_string = self.formulate_answer(question, rev_vocab, 0, len(question) - 1, mask = question_mask)
-            predicted_answer = self.formulate_answer(context, rev_vocab, a_s, a_e)
-            # compute the accuracy
-            true_answer = self.formulate_answer(context, rev_vocab, a_s_true, a_e_true)
-            f1 += f1_score(predicted_answer, true_answer)
-            if exact_match_score(predicted_answer, true_answer):
-                em += 1
-            # logging predictions
-            if self.summary_flag:
-                log_file.write("Question: {}\n".format(question_string))
-                log_file.write("Predicted: {}\n".format(predicted_answer))
-                log_file.write("Answer: {}\n".format(true_answer))
-                log_file.write("F1: {}\n".format(f1_score(predicted_answer, true_answer)))
-                log_file.write("EM: {}\n".format(exact_match_score(predicted_answer, true_answer)))
-        f1 /= sample
-        em /= sample
-        if log:
-            if self.summary_flag:
-                log_file.write("F1: {}, EM: {}, for {} samples\n".format(f1, em, sample))
-            logging.info("F1: {}, EM: {}, for {} samples\n".format(f1, em, sample))
+                sample_dataset = dataset[start + i]
+                context = sample_dataset[0]
+                (a_s_true, a_e_true) = sample_dataset[6]
+                predicted_answer = self.formulate_answer(context, rev_vocab, a_s, a_e)
+                true_answer = self.formulate_answer(context, rev_vocab, a_s_true, a_e_true)
+                f1 = f1_score(predicted_answer, true_answer)
+                overall_f1 += f1
+                if exact_match_score(predicted_answer, true_answer):
+                    overall_em += 1
+
+        average_f1 = overall_f1/sample
+        overall_em = overall_em/sample
+        logging.info("F1: {}, EM: {}, for {} samples\n".format(average_f1, overall_em, sample))
+        # f1 = 0.
+        # em = 0.
+        # index = min(len(dataset), sample)
+
+        # for i in range(index):
+        #     sample_dataset = [dataset[i]] ## batch size = 1, keep same format after indexing
+        #     # compute predicted answer
+        #     (a_s, a_e) = self.answer(session, sample_dataset)
+        #     # getting true answer
+        #     (a_s_true, a_e_true) = sample_dataset[0][6]
+        #     # formulate questions and answers for computing the accuracy
+        #     context = sample_dataset[0][0]
+        #     question = sample_dataset[0][2]
+        #     question_mask = sample_dataset[0][3]
+        #     question_string = self.formulate_answer(question, rev_vocab, 0, len(question) - 1, mask = question_mask)
+        #     predicted_answer = self.formulate_answer(context, rev_vocab, a_s, a_e)
+        #     # compute the accuracy
+        #     true_answer = self.formulate_answer(context, rev_vocab, a_s_true, a_e_true)
+        #     f1 += f1_score(predicted_answer, true_answer)
+        #     if exact_match_score(predicted_answer, true_answer):
+        #         em += 1
+        #     # logging predictions
+        #     if self.summary_flag:
+        #         log_file.write("Question: {}\n".format(question_string))
+        #         log_file.write("Predicted: {}\n".format(predicted_answer))
+        #         log_file.write("Answer: {}\n".format(true_answer))
+        #         log_file.write("F1: {}\n".format(f1_score(predicted_answer, true_answer)))
+        #         log_file.write("EM: {}\n".format(exact_match_score(predicted_answer, true_answer)))
+        # f1 /= sample
+        # em /= sample
+        # if log:
+        #     if self.summary_flag:
+        #         log_file.write("F1: {}, EM: {}, for {} samples\n".format(f1, em, sample))
+        #     logging.info("F1: {}, EM: {}, for {} samples\n".format(f1, em, sample))
         return f1, em
 
     def train(self, session, dataset, train_dir):
