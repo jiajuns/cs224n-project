@@ -74,8 +74,8 @@ def generate_answers(sess, model, dataset, rev_vocab):
     overall_f1 = 0.
     overall_em = 0.
     minibatch_size = 100
-    #num_batches = len(dataset) / minibatch_size
-    num_batches = 10
+    num_batches = int(len(dataset) / minibatch_size)
+    #num_batches = 10
     for batch in range(0, num_batches):
         start = batch * minibatch_size
         print("batch {} out of {}".format(batch+1, num_batches))
@@ -138,8 +138,8 @@ def main(_):
     qa = QASystem(encoder, decoder, FLAGS, embedding, rev_vocab)
 
     with tf.Session() as sess:
-        #train_dir = get_normalized_train_dir(FLAGS.train_dir)
-        qa = initialize_model(sess, qa, FLAGS.train_dir)
+        train_dir = get_normalized_train_dir(train_dir)
+        qa = initialize_model(sess, qa, train_dir)
         generate_answers(sess, qa, val_data, rev_vocab)
 
 
