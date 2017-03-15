@@ -37,7 +37,7 @@ class BiLSTM_Encoder():
         # need to compute S first
         # S: (?, m, n)
         with tf.variable_scope('bi_attention') as scope:
-            S = self.similarity(y_q, y_c)
+            S = self.bilinear_similarity(y_q, y_c)
             H = self.Q2C_attention(y_q, y_c, S)  # H = (?, 2h, m)
             U = self.C2Q_attention(y_q, y_c, S)  # U = (?, 2h, m)
             # need to compute G
@@ -62,35 +62,35 @@ class BiLSTM_Encoder():
             S = tf.einsum('aij,ajk->aik', bi_S_temp, y_c)  # (?, n, 2h) * (?, 2h, m) = (?, n, m)
         return S
 
-    def similarity(self, y_q, y_c):
-        # y_q: (?, 2h, n)
-        # y_c: (?, 2h, m)
-        # S : (?, m, n)
-        with tf.variable_scope('similarity') as scope:
-            w_s1 = tf.get_variable('w_sim_1', shape=(2 * self.hidden_size, 1),
-                initializer=tf.contrib.layers.xavier_initializer())
-            w_s2 = tf.get_variable('w_sim_2', shape=(2 * self.hidden_size, 1),
-                initializer=tf.contrib.layers.xavier_initializer())
-            w_s3 = tf.get_variable('w_sim_3', shape=(2 * self.hidden_size, 1),
-                initializer=tf.contrib.layers.xavier_initializer())
+    # def similarity(self, y_q, y_c):
+    #     # y_q: (?, 2h, n)
+    #     # y_c: (?, 2h, m)
+    #     # S : (?, m, n)
+    #     with tf.variable_scope('similarity') as scope:
+    #         w_s1 = tf.get_variable('w_sim_1', shape=(2 * self.hidden_size, 1),
+    #             initializer=tf.contrib.layers.xavier_initializer())
+    #         w_s2 = tf.get_variable('w_sim_2', shape=(2 * self.hidden_size, 1),
+    #             initializer=tf.contrib.layers.xavier_initializer())
+    #         w_s3 = tf.get_variable('w_sim_3', shape=(2 * self.hidden_size, 1),
+    #             initializer=tf.contrib.layers.xavier_initializer())
 
-            if self.summary_flag:
-                variable_summaries(w_s1, "w_sim_1")
-                variable_summaries(w_s2, "w_sim_2")
-                variable_summaries(w_s3, "w_sim_3")
+    #         if self.summary_flag:
+    #             variable_summaries(w_s1, "w_sim_1")
+    #             variable_summaries(w_s2, "w_sim_2")
+    #             variable_summaries(w_s3, "w_sim_3")
 
-            self.batch_size = tf.shape(y_c)[0]
+    #         self.batch_size = tf.shape(y_c)[0]
 
-            w_s1_tiled = tf.tile(tf.expand_dims(w_s1, 0), [self.batch_size, 1, 1])
-            w_s2_tiled = tf.tile(tf.expand_dims(w_s2, 0), [self.batch_size, 1, 1])
-            S_h = tf.einsum('aji,ajk->aki', y_c, w_s1_tiled)  # (?, 2h, m) * (?, 2h, 1) => (?, 1, m)
-            S_u = tf.einsum('aji,ajk->aik', y_q, w_s2_tiled)  # (?, 2h, n) * (?, 2h, 1) => (?, n, 1)
+    #         w_s1_tiled = tf.tile(tf.expand_dims(w_s1, 0), [self.batch_size, 1, 1])
+    #         w_s2_tiled = tf.tile(tf.expand_dims(w_s2, 0), [self.batch_size, 1, 1])
+    #         S_h = tf.einsum('aji,ajk->aki', y_c, w_s1_tiled)  # (?, 2h, m) * (?, 2h, 1) => (?, 1, m)
+    #         S_u = tf.einsum('aji,ajk->aik', y_q, w_s2_tiled)  # (?, 2h, n) * (?, 2h, 1) => (?, n, 1)
 
-            S_h_tiled = tf.tile(S_h, [1, self.max_question_len, 1])           # (?, 1, m) => (?, n, m)
-            S_u_tiled = tf.tile(S_u, [1, 1, self.max_context_len])            # (?, n, 1) => (?, n, m)
-            S_cov = tf.einsum('aij,aik->ajk', y_q, y_c * w_s3)  # (?, 2h, n) * (?, 2h, m) => (?, n, m)
-            S = S_cov + S_h_tiled + S_u_tiled
-        return S
+    #         S_h_tiled = tf.tile(S_h, [1, self.max_question_len, 1])           # (?, 1, m) => (?, n, m)
+    #         S_u_tiled = tf.tile(S_u, [1, 1, self.max_context_len])            # (?, n, 1) => (?, n, m)
+    #         S_cov = tf.einsum('aij,aik->ajk', y_q, y_c * w_s3)  # (?, 2h, n) * (?, 2h, m) => (?, n, m)
+    #         S = S_cov + S_h_tiled + S_u_tiled
+    #     return S
 
     def C2Q_attention(self, y_q, y_c, S):
         # y_q: (?, 2h, n)
@@ -149,10 +149,10 @@ class BiLSTM_Encoder():
                  It can be context-level representation, word-level representation,
                  or both.
         """
-        filtered_context = self.filter_layer(question, context)
+        #filtered_context = self.filter_layer(question, context)
         yq = self.BiLSTM(question, question_mask, self.max_question_len, 'question_BiLSTM', dropout) # (?, 2h, n)
-        yc = self.BiLSTM(filtered_context, context_mask, self.max_context_len, 'context_BiLSTM', dropout) # (?, 2h, m)
-        #yc = self.BiLSTM(context, context_mask, self.max_context_len, 'context_BiLSTM', dropout) # (?, 2h, m)
+        #yc = self.BiLSTM(filtered_context, context_mask, self.max_context_len, 'context_BiLSTM', dropout) # (?, 2h, m)
+        yc = self.BiLSTM(context, context_mask, self.max_context_len, 'context_BiLSTM', dropout) # (?, 2h, m)
         return yq, yc, self.bi_attention(yq, yc)
 
 class Dummy_Encoder(object):
