@@ -14,13 +14,12 @@ from evaluate import exact_match_score, f1_score
 from util import Progbar, minibatches, split_train_dev, variable_summaries
 
 class Decoder(object):
-    def __init__(self, hidden_size, max_context_len, max_question_len, output_size, summary_flag, reg_scale):
+    def __init__(self, hidden_size, max_context_len, max_question_len, output_size, summary_flag):
         self.hidden_size = hidden_size
         self.output_size = output_size
         self.max_context_len = max_context_len
         self.max_question_len = max_question_len
         self.summary_flag = summary_flag
-        self.reg_scale = reg_scale
 
     def decode(self):
         """

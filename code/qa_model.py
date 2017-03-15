@@ -46,12 +46,12 @@ class QASystem(object):
         self.summaries_dir = flags.summaries_dir
         self.summary_flag = flags.summary_flag
         self.max_grad_norm = flags.max_grad_norm
-        self.reg_scale = flags.reg_scale
         self.base_lr = flags.learning_rate
         self.decay_number = flags.decay_number
         self.model_name = flags.model_name
         self.train_loss_log = flags.train_dir + "/" + "train_loss.csv"
         self.dev_loss_log = flags.train_dir + "/" + "dev_loss.csv"
+        self.filter_flag = flags.filter_flag
 
         # ==== set up placeholder tokens ========
         self.context_placeholder = tf.placeholder(tf.int32, shape=(None, self.max_context_len))
@@ -127,11 +127,6 @@ class QASystem(object):
             masked_h_e = tf.boolean_mask(h_e, self.context_mask_placeholder)
             loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(h_s, self.start_span_placeholder) +
                    tf.nn.softmax_cross_entropy_with_logits(h_e, self.end_span_placeholder))
-            # reg_vars = [tf_var for tf_var in tf.trainable_variables() if "Bias" not in tf_var.name]
-            # tf.contrib.layers.apply_regularization(
-            #     tf.contrib.layers.l2_regularizer(self.reg_scale), reg_vars)
-            # reg_loss = tf.get_collection(tf.GraphKeys.REGULARIZATION_LOSSES)
-            # total_loss = loss + sum(reg_loss)
             total_loss = loss
         return total_loss, masked_h_s, masked_h_e
 

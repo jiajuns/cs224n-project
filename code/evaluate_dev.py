@@ -82,7 +82,7 @@ def generate_answers(sess, model, dataset, rev_vocab):
     #num_batches = 10
     for batch in range(0, num_batches):
         start = batch * minibatch_size
-        print("batch {} out of {}".format(batch+1, num_batches))
+            print("batch {} out of {}".format(batch+1, num_batches))
         batch_f1 = 0.
         batch_em = 0.
         h_s, h_e = model.decode(sess, dataset[start:start + minibatch_size])
@@ -137,8 +137,8 @@ def main(_):
     vocab_path = FLAGS.vocab_path or pjoin(FLAGS.data_dir, "vocab.dat")
     vocab, rev_vocab = initialize_vocab(vocab_path)
     embedding = tf.constant(load_embeddings(embed_path), dtype = tf.float32)
-    encoder = Encoder(FLAGS.state_size, FLAGS.max_context_len, FLAGS.max_question_len, FLAGS.embedding_size, FLAGS.summary_flag, FLAGS.reg_scale)
-    decoder = Decoder(FLAGS.state_size, FLAGS.max_context_len, FLAGS.max_question_len, FLAGS.output_size, FLAGS.summary_flag, FLAGS.reg_scale)
+    encoder = Encoder(FLAGS.state_size, FLAGS.max_context_len, FLAGS.max_question_len, FLAGS.embedding_size, FLAGS.summary_flag, FLAGS.filter_flag)
+    decoder = Decoder(FLAGS.state_size, FLAGS.max_context_len, FLAGS.max_question_len, FLAGS.output_size, FLAGS.summary_flag)
     qa = QASystem(encoder, decoder, FLAGS, embedding, rev_vocab)
 
     with tf.Session() as sess:
