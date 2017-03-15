@@ -118,7 +118,7 @@ class BiLSTM_Encoder():
         return cosine_sim  # (?, n, m)
 
     def filter_layer(self, question, context):
-        with tf.variable_scope('similarity') as scope:
+        with tf.variable_scope('filter') as scope:
             w_f = tf.get_variable('w_filter', shape=(self.max_question_len, 1),
                 initializer=tf.contrib.layers.xavier_initializer())
 
