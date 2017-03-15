@@ -9,7 +9,6 @@ import sys
 import random
 from os.path import join as pjoin
 
-from tqdm import tqdm
 import numpy as np
 from six.moves import xrange
 import tensorflow as tf
@@ -75,7 +74,8 @@ def generate_answers(sess, model, dataset, rev_vocab):
     overall_f1 = 0.
     overall_em = 0.
     minibatch_size = 100
-    for start in tqdm(range(0, len(dataset), minibatch_size), desc="predicting on test"):
+    num_batches = len(dataset) / minibatch_size
+    for start in range(0, num_batches):
     #for start in tqdm(range(0, test_size, minibatch_size), desc="predicting on test"):
         batch_f1 = 0.
         batch_em = 0.
