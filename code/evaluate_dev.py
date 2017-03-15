@@ -105,8 +105,8 @@ def generate_answers(sess, model, dataset, rev_vocab):
                 batch_em += 1
         print("batch F1: {}".format(batch_f1/minibatch_size))
         print("batch EM: {}".format(batch_em/minibatch_size))
-    print("overall F1: {}".format(overall_f1/minibatch_size))
-    print("overall EM: {}".format(overall_em/minibatch_size))
+    print("overall F1: {}".format(overall_f1/len(dataset)))
+    print("overall EM: {}".format(overall_em/len(dataset)))
     
 def main(_):
     #======Fill the model name=============
