@@ -50,13 +50,13 @@ class BiLSTM_Encoder():
         # y_c: (?, 2h, m)
         # S : (?, n, m)
         with tf.variable_scope('similarity') as scope:
-            batch_size = tf.shape(y_c)[0]
+            self.batch_size = tf.shape(y_c)[0]
             w_alpha = tf.get_variable('w_alpha', shape=(2 * self.hidden_size, 2 * self.hidden_size),
                 initializer=tf.contrib.layers.xavier_initializer())
 
             if self.summary_flag:
                 variable_summaries(w_alpha, "bilinear_w_alpha")
-            w_alpha_tiled = tf.tile(tf.expand_dims(w_alpha, 0), [batch_size, 1, 1])
+            w_alpha_tiled = tf.tile(tf.expand_dims(w_alpha, 0), [self.batch_size, 1, 1])
             y_q_T = tf.transpose(y_q, perm=[0, 2, 1]) # U_T: (?, n, 2h)
             bi_S_temp = tf.einsum('aij,ajk->aik', y_q_T, w_alpha_tiled) # (?, n, 2h) * (2h, 2h) = (?, n, 2h)
             S = tf.einsum('aij,ajk->aik', bi_S_temp, y_c)  # (?, n, 2h) * (?, 2h, m) = (?, n, m)
@@ -112,10 +112,10 @@ class BiLSTM_Encoder():
     def _cosine_similarity(self, Q, C):
         # Q = (?, m, h)
         # C = (?, n, h)
-        normed_Q = tf.nn.l2_normalize(Q, dim=-1)  # (?, m, h)
-        normed_C = tf.nn.l2_normalize(C, dim=-1)  # (?, n, h)
+        normed_Q = tf.nn.l2_normalize(Q, dim=-1)  # (?, n, h)
+        normed_C = tf.nn.l2_normalize(C, dim=-1)  # (?, m, h)
         cosine_sim = tf.matmul(normed_Q, tf.transpose(normed_C, perm=[0, 2, 1]))
-        return cosine_sim  # (?, m, n)
+        return cosine_sim  # (?, n, m)
 
     def filter_layer(self, question, context):
         with tf.variable_scope('similarity') as scope:
@@ -125,9 +125,12 @@ class BiLSTM_Encoder():
             if self.summary_flag:
                 variable_summaries(w_f, "filter_layer_weights")
 
-            cosine_sim = self._cosine_similarity(question, context)       # (?, m, n)
-            cosine_sim_reshape = tf.reshape(cosine_sim, [-1, self.max_question_len])    # (?m, n)
-            relevence = tf.reshape(tf.matmul(cosine_sim_reshape, w_f), [-1, self.max_context_len, 1])    # (?m, n) * (n, 1) => (?m, 1) => (?, m, 1)
+            self.batch_size = tf.shape(question)[0]
+            w_f_tiled = tf.tile(tf.expand_dims(w_f, 0), [self.batch_size, 1, 1])
+            cosine_sim = self._cosine_similarity(question, context)       # (?, n, m)
+            # cosine_sim_reshape = tf.reshape(cosine_sim, [-1, self.max_question_len])    # (?m, n)
+            # relevence = tf.reshape(tf.matmul(cosine_sim_reshape, w_f), [-1, self.max_context_len, 1])    # (?m, n) * (n, 1) => (?m, 1) => (?, m, 1)
+            relevence = tf.einsum('aij,aik->ajk', cosine_sim, w_f_tiled)  # (?, n, m) * (?, n, 1) => (?, m, 1)
             # relevence = tf.reduce_max(cosine_sim, axis=2, keep_dims=True) # (?, m, 1)
         return context * relevence
 
@@ -146,10 +149,10 @@ class BiLSTM_Encoder():
                  It can be context-level representation, word-level representation,
                  or both.
         """
-        #filtered_context = self.filter_layer(question, context)
+        filtered_context = self.filter_layer(question, context)
         yq = self.BiLSTM(question, question_mask, self.max_question_len, 'question_BiLSTM', dropout) # (?, 2h, n)
-        yc = self.BiLSTM(context, context_mask, self.max_context_len, 'context_BiLSTM', dropout) # (?, 2h, m)
-        #yc = self.BiLSTM(filtered_context, context_mask, self.max_context_len, 'context_BiLSTM', dropout) # (?, 2h, m)
+        yc = self.BiLSTM(filtered_context, context_mask, self.max_context_len, 'context_BiLSTM', dropout) # (?, 2h, m)
+        #yc = self.BiLSTM(context, context_mask, self.max_context_len, 'context_BiLSTM', dropout) # (?, 2h, m)
         return yq, yc, self.bi_attention(yq, yc)
 
 class Dummy_Encoder(object):
