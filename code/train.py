@@ -15,14 +15,14 @@ from util import load_and_preprocess_data, load_embeddings
 import logging
 
 logging.basicConfig(level=logging.INFO)
-#81381
+
 tf.app.flags.DEFINE_string("model_name", "full_baseline_model", "name of the model")
 tf.app.flags.DEFINE_string("train_dir", "train/full_baseline_model", "Training directory, INCLUDE model name!!")
 tf.app.flags.DEFINE_integer("decay_number", 50, "Decay by 0.99 every decay_number")
 tf.app.flags.DEFINE_float("learning_rate", 0.001, "Base Learning rate.")
 tf.app.flags.DEFINE_float("max_grad_norm", 5.0, "Clip gradients to this norm.")
 tf.app.flags.DEFINE_float("dropout", 0.20, "Fraction of units randomly dropped on non-recurrent connections.")
-tf.app.flags.DEFINE_integer("train_size", 1000, "Size of the training data")
+tf.app.flags.DEFINE_integer("train_size", 81381, "Size of the training data")
 tf.app.flags.DEFINE_integer("batch_size", 150, "Batch size to use during training.")
 tf.app.flags.DEFINE_integer("epochs", 15, "Number of epochs to train.")
 tf.app.flags.DEFINE_integer("state_size", 150, "Size of each model layer.")
