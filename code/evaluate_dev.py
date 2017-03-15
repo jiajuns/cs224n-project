@@ -74,10 +74,11 @@ def generate_answers(sess, model, dataset, rev_vocab):
     overall_f1 = 0.
     overall_em = 0.
     minibatch_size = 100
-    num_batches = len(dataset) / minibatch_size
+    #num_batches = len(dataset) / minibatch_size
+    num_batches = 10
     for batch in range(0, num_batches):
         start = batch * minibatch_size
-        print("batch {} out of {}".format{batch+1, num_batches})
+        print("batch {} out of {}".format(batch+1, num_batches))
         batch_f1 = 0.
         batch_em = 0.
         h_s, h_e = model.decode(sess, dataset[start:start + minibatch_size])
@@ -106,8 +107,8 @@ def generate_answers(sess, model, dataset, rev_vocab):
                 batch_em += 1
         print("batch F1: {}".format(batch_f1/minibatch_size))
         print("batch EM: {}".format(batch_em/minibatch_size))
-    print("overall F1: {}".format(overall_f1/len(dataset)))
-    print("overall EM: {}".format(overall_em/len(dataset)))
+    print("overall F1: {}".format(overall_f1/(num_batches*minibatch_size)))
+    print("overall EM: {}".format(overall_em/(num_batches*minibatch_size)))
     
 def main(_):
     #======Fill the model name=============
@@ -138,7 +139,7 @@ def main(_):
 
     with tf.Session() as sess:
         #train_dir = get_normalized_train_dir(FLAGS.train_dir)
-        initialize_model(sess, qa, FLAGS.train_dir)
+        qa = initialize_model(sess, qa, FLAGS.train_dir)
         generate_answers(sess, qa, val_data, rev_vocab)
 
 
