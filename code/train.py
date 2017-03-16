@@ -16,11 +16,12 @@ import logging
 
 logging.basicConfig(level=logging.INFO)
 #=======Change These===============================
-tf.app.flags.DEFINE_string("model_name", "BiDAF_bilinear_1", "name of the model")
-tf.app.flags.DEFINE_string("train_dir", "train/BiDAF_bilinear_1", "Training directory, INCLUDE model name!!")
-tf.app.flags.DEFINE_string('summaries_dir', 'summary/BiDAF_bilinear_1', 'tensorboard summary dir')
+tf.app.flags.DEFINE_string("model_name", "BiDAF_bilinear_embedding_300_1", "name of the model")
+tf.app.flags.DEFINE_string("train_dir", "train/BiDAF_bilinear_embedding_300_1", "Training directory, INCLUDE model name!!")
+tf.app.flags.DEFINE_string('summaries_dir', 'summary/BiDAF_bilinear_embedding_300_1', 'tensorboard summary dir')
 tf.app.flags.DEFINE_integer("state_size", 100, "Size of each model layer.")
 tf.app.flags.DEFINE_bool('filter_flag', False, 'if true, use filter layer')
+tf.app.flags.DEFINE_integer("embedding_size", 300, "Size of the pretrained vocabulary.")
 #==================================================
 
 
@@ -32,7 +33,6 @@ tf.app.flags.DEFINE_integer("train_size", 81381, "Size of the training data")
 tf.app.flags.DEFINE_integer("batch_size", 150, "Batch size to use during training.")
 tf.app.flags.DEFINE_integer("epochs", 15, "Number of epochs to train.")
 tf.app.flags.DEFINE_integer("output_size", 2, "The output size of your model.")
-tf.app.flags.DEFINE_integer("embedding_size", 100, "Size of the pretrained vocabulary.")
 tf.app.flags.DEFINE_string("data_dir", "data/squad", "SQuAD directory (default ./data/squad)")
 tf.app.flags.DEFINE_string("load_train_dir", "", "Training directory to load model parameters from to resume training (default: {train_dir}).")
 tf.app.flags.DEFINE_string("log_dir", "log", "Path to store log and flag files (default: ./log)")
