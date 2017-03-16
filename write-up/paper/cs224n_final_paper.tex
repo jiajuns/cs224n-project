@@ -41,12 +41,34 @@ Stanford University \\
 \maketitle
 
 \begin{abstract}
+
+\end{abstract}
+
+\section{Introduction}
+\label{introduction}
+
 Machine Comprehension (MC) and Question Answering (QA) were increasingly popular in the past few years. Almost all human knowledge are recorded as text. Just like what we did in school doing reading comprehension questions, extracting information from a specific piece of context would enable artificial intelligence to get to a higher level. Different kinds of natural language processing structures such as Gated Recurrent Unit (GRU) and Long Short Term Memory (LSTM) has been introduced.
 
 These years, there are several QA database that has been released. In this paper, we describe a way using an improved version of bi-directional attention flow for the task of question answering using recently published Stanford Question Answering Dataset (SQuAD) which consisted of approximately 100K question-answer pairs with the context.
 
 The objective of the study was to extract the answer for a given question from a certain context. The model was built based on the previous hierarchical multi-stage bi-directional attention flow (BiDAF)) model (Minjoon Seo et al. 2017) while evaluating the correctness using corresponding F1 score and exact-match (EM) score.
-\end{abstract}
+
+\section{Models}
+\label{models}
+
+Our machine learning model (Figure 1) is hierachical multi-stage with 5 layers.
+
+\subsection{Word Embedding Layer}
+
+The word embedding layer maps each individual word into a high-dimension vector space. It is a set of pretrained GloVe word vectors using datasets provided by Wikipedia 2014 and Gigaword 5. The dimensionality of the vectors are 100.
+
+\subsection{Contextual Embedding Layer}
+
+In this layer, we introduced a Bi-directional Long Short-Term Memory (BiLSTM) network as our encoding layer. Contexts and questions will be fed into the network seperately, while the output from each state will all be recorded. Note that the output of will be 2d-dimension vectors (where d is 100 in our model) due to the concatenation of two output for each direction of the network.
+
+\subsection{Attention Flow Layer}
+
+The attention layer is introduced to link together the information from the question and the information given by the context. It tells us how important it is that we should pay attention to each word vector in the text (both contexts and questions). The input of this layer is contextual vector of the context H and the question U.
 
 \section{Headings: first level}
 \label{headings}
