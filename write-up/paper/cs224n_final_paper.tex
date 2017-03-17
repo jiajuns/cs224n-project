@@ -74,7 +74,7 @@ The word embedding layer maps each individual word into a high-dimension vector 
 
 \subsection{Contextual Embedding Layer}
 
-In this layer, we introduced a Bi-directional Long Short-Term Memory (BiLSTM) network as our encoding layer. Contexts and questions will be fed into the network seperately, while the output from each state will all be recorded. Note that the output of will be 2d-dimension vectors (where d is 100 in our model) due to the concatenation of two output for each direction of the network.
+In this layer, we introduced a Bi-directional Long Short-Term Memory (BiLSTM) network as our encoding layer. Contexts and questions will be fed into the network seperately, while the output from each state will all be recorded. Note that the output of which will be 2d-dimension vectors (where d is 100 in our model) due to the concatenation of two output for each direction of the network.
 
 \begin{figure}[h]
 \begin{center}
@@ -102,7 +102,7 @@ W is a trainable matrix of $R^{2d\times 2d}$ (Chen et al. 2016).
 
 The context-to-query attention indicates the weight of each word in the query considering the given context. The attention weight is computed as follow\\
 \newline
-\centerline{$weight=SoftMax(S_{i:}$}\\
+\centerline{$weight=SoftMax(S_{i:})$}\\
 \newline
 so that the query vectors turn out to be\\
 \newline
