@@ -16,17 +16,16 @@ import logging
 
 logging.basicConfig(level=logging.INFO)
 #=======Change These===============================
-tf.app.flags.DEFINE_string("model_name", "BiDAF_bilinear_embedding_300_1", "name of the model")
-tf.app.flags.DEFINE_string("train_dir", "train/BiDAF_bilinear_embedding_300_1", "Training directory, INCLUDE model name!!")
-tf.app.flags.DEFINE_string('summaries_dir', 'summary/BiDAF_bilinear_embedding_300_1', 'tensorboard summary dir')
+tf.app.flags.DEFINE_string("model_name", "BiDAF_bilinear_embedding_300_fast_learn_1", "name of the model")
+tf.app.flags.DEFINE_string("train_dir", "train/BiDAF_bilinear_embedding_300_fast_learn_1", "Training directory, INCLUDE model name!!")
+tf.app.flags.DEFINE_string('summaries_dir', 'summary/BiDAF_bilinear_embedding_300_fast_learn_1', 'tensorboard summary dir')
 tf.app.flags.DEFINE_integer("state_size", 100, "Size of each model layer.")
 tf.app.flags.DEFINE_bool('filter_flag', False, 'if true, use filter layer')
 tf.app.flags.DEFINE_integer("embedding_size", 300, "Size of the pretrained vocabulary.")
+tf.app.flags.DEFINE_integer("decay_number", 10, "Decay by 0.99 every decay_number")
+tf.app.flags.DEFINE_float("learning_rate", 0.5, "Base Learning rate.")
 #==================================================
 
-
-tf.app.flags.DEFINE_integer("decay_number", 50, "Decay by 0.99 every decay_number")
-tf.app.flags.DEFINE_float("learning_rate", 0.001, "Base Learning rate.")
 tf.app.flags.DEFINE_float("max_grad_norm", 10.0, "Clip gradients to this norm.")
 tf.app.flags.DEFINE_float("dropout", 0.20, "Fraction of units randomly dropped on non-recurrent connections.")
 tf.app.flags.DEFINE_integer("train_size", 81381, "Size of the training data")
