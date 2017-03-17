@@ -2,10 +2,20 @@
 \usepackage{nips13submit_e,times}
 \usepackage{hyperref}
 \usepackage{url}
+\usepackage{tgtermes}
+\usepackage{graphicx} % Required for including pictures
+\usepackage{wrapfig} % Allows in-line images
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{booktabs}
+\usepackage{amsthm}
+\usepackage{algorithm}
+\usepackage{caption}
+\usepackage{cmap}
 %\documentstyle[nips13submit_09,times,art10]{article} % For LaTeX 2.09
 
 
-\title{Paper Name}
+\title{Machine Comprehension using Improved Bi-Directional Attention Flow Network}
 
 
 \author{
@@ -66,9 +76,59 @@ The word embedding layer maps each individual word into a high-dimension vector 
 
 In this layer, we introduced a Bi-directional Long Short-Term Memory (BiLSTM) network as our encoding layer. Contexts and questions will be fed into the network seperately, while the output from each state will all be recorded. Note that the output of will be 2d-dimension vectors (where d is 100 in our model) due to the concatenation of two output for each direction of the network.
 
+\begin{figure}[h]
+\begin{center}
+%\framebox[4.0in]{$\;$}
+\includegraphics[width=0.9\textwidth]{model_graph.jpeg}
+\end{center}
+\caption{Bi-Directional Attention Flow Model }
+\end{figure}
+
 \subsection{Attention Flow Layer}
 
 The attention layer is introduced to link together the information from the question and the information given by the context. It tells us how important it is that we should pay attention to each word vector in the text (both contexts and questions). The input of this layer is contextual vector of the context H and the question U.
+
+In this layer, the attention is calculated from the similarity matrix of H and U as follow:\\
+\newline
+\centerline{$S_{ij}=\alpha (H_{:,t}, U(:,j))$}\\
+\newline
+where $S_ij$ indicates the similarity of the word i in the context and the word j in the query, and $\alpha$ is the bilinear factor which is defined as\\
+\newline
+\centerline{$\alpha (h,u)=h^TW_{bi}u$}\\
+\newline
+W is a trainable matrix of $R^{2d\times 2d}$ (Chen et al. 2016).
+
+\subsubsection{Context-to-query Attention}
+
+The context-to-query attention indicates the weight of each word in the query considering the given context. The attention weight is computed as follow\\
+\newline
+\centerline{$weight=SoftMax(S_{i:}$}\\
+\newline
+so that the query vectors turn out to be\\
+\newline
+\centerline{$\hat{U}=\sum_j a_{ij}U_{:j}$}\\
+
+\subsubsection{Query-to-context Attention}
+
+The query-to-context attention indicates the weight of each context word considering the given query. Similar to what we did in context-to-query attention, the attention weights are calculated from\\
+\newline
+\centerline{$b=SoftMax(max_{col}(S)$}\\
+\newline
+and
+\newline
+\centerline{$\hat{H}=\sum_tb_tH_{:t}$}\\
+\newline
+Then we combined three vectors as the yield G, where $\beta$ is a trainable vector of $R^{8d\times T}$\\
+\newline
+\centerline{$G=\beta (H, \hat{U}, \hat{H}$}\\
+
+\subsection{Modeling Layer}
+
+The input of the modeling layer (decoding layer) encrypts the information of the context together with some information from the query. So that when we pass the tensor to a bi-LSTM network, similar to what we did in the contextual embedding layer, the output would be a matrix of $R^{2d\times T}$, where T indicates the number of context in the dataset.
+
+\subsection{Output Layer}
+
+In this layer, we provides the answer to questions by calculating the probability for each position in the context as the start and the end of the answer with SoftMax. However, in some situations, though very rare, we would flip over the start and ending labels if the ending predicted maybe even appears earlier than the start in the context. It would be discussed more in detail in section 4.
 
 \section{Headings: first level}
 \label{headings}
@@ -190,6 +250,11 @@ when listing the references. {\bf Remember that this year you can use
 a ninth page as long as it contains \emph{only} cited references.}
 
 \small{
+[1] Danqi Chen., Jason Bolton. \& Christopher D. Manning. (2016) A thorough examination of the cnn/daily mail reading comprehension task. {\it arXiv:1606.02858}
+
+
+
+% Reference template. Delete when finished
 [1] Alexander, J.A. \& Mozer, M.C. (1995) Template-based algorithms
 for connectionist rule extraction. In G. Tesauro, D. S. Touretzky
 and T.K. Leen (eds.), {\it Advances in Neural Information Processing
