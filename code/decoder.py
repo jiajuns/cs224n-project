@@ -94,7 +94,19 @@ class BiLSTM_Decoder(Decoder):
             hidden_outputs = tf.concat(2, outputs)
         return hidden_outputs
 
-    def output_layer(self, G, M, dropout):
+    def end_position_lstm_layer(self, context_mask, dropout, M1):
+        # M (?, m, 2h)
+        with tf.variable_scope('end_position_lstm_layer'):
+            lstm_fw_cell = tf.nn.rnn_cell.DropoutWrapper(cell=tf.nn.rnn_cell.BasicLSTMCell(self.hidden_size), output_keep_prob=dropout)
+            lstm_bw_cell = tf.nn.rnn_cell.DropoutWrapper(cell=tf.nn.rnn_cell.BasicLSTMCell(self.hidden_size), output_keep_prob=dropout)
+            seq_len = tf.reduce_sum(tf.cast(context_mask, tf.int32), axis=1)
+            outputs, _ = tf.nn.bidirectional_dynamic_rnn(
+                lstm_fw_cell, lstm_bw_cell, inputs = M1, sequence_length=seq_len, dtype=tf.float32
+            )
+            M2 = tf.concat(2, outputs)
+        return M2
+
+    def output_layer(self, G, M1, M2, dropout):
         # M (?, m, 2h)
         # the softmax part is implemented together with loss function
         with tf.variable_scope('output_layer'):
@@ -107,10 +119,10 @@ class BiLSTM_Decoder(Decoder):
                 variable_summaries(w_1, "output_w_1")
                 variable_summaries(w_2, "output_w_2")
 
-            self.batch_size = tf.shape(M)[0]
+            self.batch_size = tf.shape(M1)[0]
 
-            temp1 = tf.concat(2, [G, M])  # (?, m, 10h)
-            temp2 = tf.concat(2, [G, M])  # (?, m, 10h)
+            temp1 = tf.concat(2, [G, M1])  # (?, m, 10h)
+            temp2 = tf.concat(2, [G, M2])  # (?, m, 10h)
             temp_1_o = tf.nn.dropout(temp1, dropout)
             temp_2_o = tf.nn.dropout(temp2, dropout)
 
@@ -122,6 +134,7 @@ class BiLSTM_Decoder(Decoder):
             return h_1, h_2
 
     def decode(self, context_mask, dropout, G):
-        M = self.model_layer(context_mask, dropout, G)
-        h1, h2 = self.output_layer(G, M, dropout)
+        M1 = self.model_layer(context_mask, dropout, G)
+        M2 = self.end_position_lstm_layer(context_mask, dropout, M1)
+        h1, h2 = self.output_layer(G, M1, M2, dropout)
         return h1, h2
