@@ -75,7 +75,7 @@ class QASystem(object):
               self.decay_number,                          # decay every 50 batch
               0.99,                                       # Decay rate
               staircase = True)
-            self.optimizer = tf.train.AdamOptimizer(self.learning_rate)
+            self.optimizer = tf.train.AdadeltaOptimizer(self.learning_rate)
 
         # ==== set up training/updating procedure ====
             grads_and_vars = self.optimizer.compute_gradients(self.loss)
