@@ -52,6 +52,7 @@ def initialize_vocabulary(vocabulary_path):
             rev_vocab.extend(f.readlines())
         rev_vocab = [line.strip('\n') for line in rev_vocab]
         vocab = dict([(x, y) for (y, x) in enumerate(rev_vocab)])
+        print("vocab list length: {}".format(len(vocab.items())))
         return vocab, rev_vocab
     else:
         raise ValueError("Vocabulary file %s not found.", vocabulary_path)
@@ -63,7 +64,7 @@ def process_glove(args, vocab_list, save_path, size=4e5):
     :return:
     """
     if not gfile.Exists(save_path + ".npz"):
-        glove_path = os.path.join(args.glove_dir, "glove.840B.{}d.txt".format(args.glove_dim))
+        glove_path = os.path.join(args.glove_dir, "glove.6B.{}d.txt".format(args.glove_dim))
         glove = np.zeros((len(vocab_list), args.glove_dim))
         not_found = 0
         with open(glove_path, 'r') as fh:
@@ -108,6 +109,14 @@ def create_vocabulary(vocabulary_path, data_paths, tokenizer=None):
                             vocab[w] += 1
                         else:
                             vocab[w] = 1
+        print("adding glove words into vocabulary")
+        glove_path = os.path.join(args.glove_dir, "glove.6B.{}d.txt".format(args.glove_dim))
+        with open(glove_path, 'r') as fh:
+            for line in tqdm(fh, total=4e5):
+                array = line.lstrip().rstrip().split(" ")
+                word = array[0]
+                if word not in vocab:
+                    vocab[word] = 1
         vocab_list = _START_VOCAB + sorted(vocab, key=vocab.get, reverse=True)
         print("Vocabulary size: %d" % len(vocab_list))
         with gfile.GFile(vocabulary_path, mode="wb") as vocab_file:
@@ -150,7 +159,9 @@ if __name__ == '__main__':
                       [pjoin(args.source_dir, "train.context"),
                        pjoin(args.source_dir, "train.question"),
                        pjoin(args.source_dir, "val.context"),
-                       pjoin(args.source_dir, "val.question")])
+                       pjoin(args.source_dir, "val.question"),
+                       pjoin(args.source_dir, "dev.context"),
+                       pjoin(args.source_dir, "dev.question")])
     vocab, rev_vocab = initialize_vocabulary(pjoin(args.vocab_dir, "vocab.dat"))
 
     # ======== Trim Distributed Word Representation =======
