@@ -37,7 +37,7 @@ class BiLSTM_Encoder():
         # need to compute S first
         # S: (?, m, n)
         with tf.variable_scope('bi_attention') as scope:
-            S = self.similarity(y_q, y_c)
+            S = self.bilinear_similarity(y_q, y_c)
             H = self.Q2C_attention(y_q, y_c, S)  # H = (?, 2h, m)
             U = self.C2Q_attention(y_q, y_c, S)  # U = (?, 2h, m)
             # need to compute G
