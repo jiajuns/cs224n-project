@@ -334,7 +334,8 @@ class QASystem(object):
         for epoch in range(self.n_epoch):
             print("Epoch {:} out of {:}".format(epoch + 1, self.n_epoch))
             dev_score = self.run_epoch(session, train_examples, dev_examples, epoch, train_log)
-            dev_log.write("{},{}\n".format(epoch + 1, dev_score)) logging.info("Average Dev Cost: {}".format(dev_score))
+            dev_log.write("{},{}\n".format(epoch + 1, dev_score))
+            logging.info("Average Dev Cost: {}".format(dev_score))
             logging.info("train F1 & EM")
             f1, em = self.evaluate_answer(session, train_examples, self.rev_vocab, log = True)
             logging.info("Dev F1 & EM")
