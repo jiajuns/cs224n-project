@@ -127,8 +127,8 @@ class QASystem(object):
             # masked_h_e = tf.boolean_mask(h_e, self.context_mask_placeholder)
             # loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(h_s, self.start_span_placeholder) +
             #        tf.nn.softmax_cross_entropy_with_logits(h_e, self.end_span_placeholder))
-            masked_h_s = tf.add(h_s, (1 - tf.cast(context_mask, 'float')) * (-1e30))
-            masked_h_e = tf.add(h_e, (1 - tf.cast(context_mask, 'float')) * (-1e30))
+            masked_h_s = tf.add(h_s, (1 - tf.cast(self.context_mask_placeholder, 'float')) * (-1e30))
+            masked_h_e = tf.add(h_e, (1 - tf.cast(self.context_mask_placeholder, 'float')) * (-1e30))
             loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(masked_h_s, self.start_span_placeholder) +
                    tf.nn.softmax_cross_entropy_with_logits(masked_h_e, self.end_span_placeholder))
             total_loss = loss
