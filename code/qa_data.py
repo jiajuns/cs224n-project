@@ -33,7 +33,7 @@ def setup_args():
     parser.add_argument("--source_dir", default=source_dir)
     parser.add_argument("--glove_dir", default=glove_dir)
     parser.add_argument("--vocab_dir", default=vocab_dir)
-    parser.add_argument("--glove_dim", default=50, type=int)
+    parser.add_argument("--glove_dim", default=300, type=int)
     return parser.parse_args()
 
 
@@ -63,7 +63,7 @@ def process_glove(args, vocab_list, save_path, size=4e5):
     :return:
     """
     if not gfile.Exists(save_path + ".npz"):
-        glove_path = os.path.join(args.glove_dir, "glove.6B.{}d.txt".format(args.glove_dim))
+        glove_path = os.path.join(args.glove_dir, "glove.840B.{}d.txt".format(args.glove_dim))
         glove = np.zeros((len(vocab_list), args.glove_dim))
         not_found = 0
         with open(glove_path, 'r') as fh:
