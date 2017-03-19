@@ -16,13 +16,13 @@ import logging
 
 logging.basicConfig(level=logging.INFO)
 #=======Change These===============================
-tf.app.flags.DEFINE_string("model_name", "BiDAF_similarity_1", "name of the model")
-tf.app.flags.DEFINE_string("train_dir", "train/BiDAF_similarity_1", "Training directory, INCLUDE model name!!")
-tf.app.flags.DEFINE_string('summaries_dir', 'summary/BiDAF_similarity_1', 'tensorboard summary dir')
+tf.app.flags.DEFINE_string("model_name", "baseline_1", "name of the model")
+tf.app.flags.DEFINE_string("train_dir", "train/baseline_1", "Training directory, INCLUDE model name!!")
+tf.app.flags.DEFINE_string('summaries_dir', 'summary/baseline_1', 'tensorboard summary dir')
 tf.app.flags.DEFINE_integer("state_size", 100, "Size of each model layer.")
 tf.app.flags.DEFINE_bool('filter_flag', False, 'if true, use filter layer')
 tf.app.flags.DEFINE_integer("embedding_size", 100, "Size of the pretrained vocabulary.")
-tf.app.flags.DEFINE_integer("decay_number", 50, "Decay by 0.99 every decay_number")
+tf.app.flags.DEFINE_integer("decay_number", 70, "Decay by 0.99 every decay_number")
 tf.app.flags.DEFINE_float("learning_rate", 0.001, "Base Learning rate.")
 #==================================================
 

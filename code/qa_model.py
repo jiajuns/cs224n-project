@@ -123,10 +123,14 @@ class QASystem(object):
         :return:
         """
         with vs.variable_scope("loss"):
-            masked_h_s = tf.boolean_mask(h_s, self.context_mask_placeholder)
-            masked_h_e = tf.boolean_mask(h_e, self.context_mask_placeholder)
-            loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(h_s, self.start_span_placeholder) +
-                   tf.nn.softmax_cross_entropy_with_logits(h_e, self.end_span_placeholder))
+            # masked_h_s = tf.boolean_mask(h_s, self.context_mask_placeholder)
+            # masked_h_e = tf.boolean_mask(h_e, self.context_mask_placeholder)
+            # loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(h_s, self.start_span_placeholder) +
+            #        tf.nn.softmax_cross_entropy_with_logits(h_e, self.end_span_placeholder))
+            masked_h_s = tf.add(h_s, (1 - tf.cast(context_mask, 'float')) * (-1e30))
+            masked_h_e = tf.add(h_e, (1 - tf.cast(context_mask, 'float')) * (-1e30))
+            loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(masked_h_s, self.start_span_placeholder) +
+                   tf.nn.softmax_cross_entropy_with_logits(masked_h_e, self.end_span_placeholder))
             total_loss = loss
         return total_loss, masked_h_s, masked_h_e
 
@@ -330,8 +334,7 @@ class QASystem(object):
         for epoch in range(self.n_epoch):
             print("Epoch {:} out of {:}".format(epoch + 1, self.n_epoch))
             dev_score = self.run_epoch(session, train_examples, dev_examples, epoch, train_log)
-            dev_log.write("{},{}\n".format(epoch + 1, dev_score))
-            logging.info("Average Dev Cost: {}".format(dev_score))
+            dev_log.write("{},{}\n".format(epoch + 1, dev_score)) logging.info("Average Dev Cost: {}".format(dev_score))
             logging.info("train F1 & EM")
             f1, em = self.evaluate_answer(session, train_examples, self.rev_vocab, log = True)
             logging.info("Dev F1 & EM")
