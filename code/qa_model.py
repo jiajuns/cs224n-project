@@ -66,7 +66,7 @@ class QASystem(object):
         # ==== assemble pieces ====
         with tf.variable_scope("qa", initializer=tf.uniform_unit_scaling_initializer(1.0)):
             context_embeddings, question_embeddings = self.setup_embeddings()
-            self.h_s, self.h_e = self.setup_system(context_embeddings, question_embeddings)
+            self.h_s, self.h_e, self.relevence = self.setup_system(context_embeddings, question_embeddings)
             self.loss, self.masked_h_s, self.masked_h_e = self.setup_loss(self.h_s, self.h_e)
             # computing learning rates
             self.learning_rate = tf.train.exponential_decay(
@@ -111,11 +111,11 @@ class QASystem(object):
         to assemble your reading comprehension system!
         :return:
         """
-        yq, yc, attention = self.encoder.encode(context_embeddings, question_embeddings,
+        yq, yc, attention, relevence = self.encoder.encode(context_embeddings, question_embeddings,
                         self.context_mask_placeholder, self.question_mask_placeholder,
                         self.dropout_placeholder)
         h_s, h_e = self.decoder.decode(self.context_mask_placeholder, self.dropout_placeholder, attention)
-        return h_s, h_e
+        return h_s, h_e, relevence
 
     def setup_loss(self, h_s, h_e):
         """
@@ -207,11 +207,12 @@ class QASystem(object):
         """
         unzipped_dev_example = list(zip(*dev_example))
         input_feed = self.create_feed_dict(unzipped_dev_example[0:4], dropout = 1)
-        output_feed = [self.h_s, self.h_e]
+        output_feed = [self.h_s, self.h_e, self.relevence]
         outputs = session.run(output_feed, input_feed)
         h_s = outputs[0]
         h_e = outputs[1]
-        return h_s, h_e
+        rel = outputs[2]
+        return h_s, h_e, rel
 
     def validate(self, sess, valid_dataset):
         """
@@ -240,7 +241,7 @@ class QASystem(object):
                         answer += ' '
         return answer
 
-    def evaluate_answer(self, session, dataset, rev_vocab, sample=300, log=False):
+    def evaluate_answer(self, session, dataset, rev_vocab, sample=20, log=False):
         """
         Evaluate the model's performance using the harmonic mean of F1 and Exact Match (EM)
         with the set of true answer labels
@@ -263,7 +264,7 @@ class QASystem(object):
         for batch in range(0, num_batches):
             start = batch * minibatch_size
             end = min(len(dataset), start + minibatch_size)
-            h_s, h_e = self.decode(session, dataset[start:end])
+            h_s, h_e, _ = self.decode(session, dataset[start:end])
             for i in range(minibatch_size):
                 a_s = np.argmax(h_s[i])
                 a_e = np.argmax(h_e[i])
