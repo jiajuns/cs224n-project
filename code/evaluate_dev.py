@@ -83,7 +83,7 @@ def construct_result(index, f1, RoW, dataset, true_s, true_e, pre_s, pre_e, pre_
     context_mask = dataset[1]
     question = dataset[2]
     question_mask = dataset[3]
-    machine_list = [index, f1, RoW, len(context), len(question), abs(true_s - true_e), true_s, true_e]
+    machine_list = [index, f1, RoW, len(context_mask), len(question_mask), abs(true_s - true_e), true_s, true_e]
     list_str = ' '.join(str(value) for value in machine_list)
     question_string = formulate_answer(question, rev_vocab, 0, len(question) - 1, mask = question_mask)
     context_string = formulate_answer(context, rev_vocab, 0, len(context) - 1, mask = context_mask)
