@@ -120,7 +120,7 @@ and
 \newline
 Then we combined three vectors as the yield G, where $\beta$ is a trainable vector of $R^{8d\times T}$\\
 \newline
-\centerline{$G=\beta (H, \hat{U}, \hat{H}$}\\
+\centerline{$G=\beta (H, \hat{U}, \hat{H})$}\\
 
 \subsection{Modeling Layer}
 
@@ -129,6 +129,37 @@ The input of the modeling layer (decoding layer) encrypts the information of the
 \subsection{Output Layer}
 
 In this layer, we provides the answer to questions by calculating the probability for each position in the context as the start and the end of the answer with SoftMax. However, in some situations, though very rare, we would flip over the start and ending labels if the ending predicted maybe even appears earlier than the start in the context. It would be discussed more in detail in section 4.
+
+\section{Experiment}
+\subsection{Dataset}
+In this experiment, we take Stanford Question Answering Dataset (SQuAD) to train our model.
+The dataset is split into training and validation set. The training set consists of 81381 samples.
+Each sample comprises of a context paragraph, question and answer.
+The context paragraphs have length smaller than 1000. Questions have length smaller than 100.
+Based on these result, the max context length is limited to 1000 and max question length is limited to 100.
+
+\subsection{Baseline}
+The baseline model processes contextual embeddings and word embeddings through bi-LSTM layer respectively.
+The hidden state vector from each bi-LSTM layer then go through the attention flow layer.
+The tensor comes out from attention flow layer has information from both context and question.
+This tensor will then pass to decoder. The decoder is another bi-LSTM layer; and two softmax layers one for predicting start position and the other for predicting end position.
+
+\subsection{Modified Model}
+In addition to the baseline model, we also modify the model in several different ways to compare the result.
+As shown in figure xx, a filter layer is added between the contextual embedding layer and Bi-LSTM layer.
+This filter layer will compute the similarity between context and question. As a result, the filter layer will give an emphasis on the context embeddings.
+Another modification we made is on the glove word vector. The dimsion of glove word vector is increased from 100 to 300.
+
+\subsection{Model Details}
+
+
+\section{Result}
+The results of all the model are summarized in Table xx. Best run of our baseline achieves an F1 score of 61 and EM of xx.
+
+\subsection{Discussion}
+\subsection{Error Analysis}
+
+\section{Conclusion}
 
 \section{Headings: first level}
 \label{headings}
@@ -164,12 +195,12 @@ paper, in the \textbf{References} section. (Note: the standard
 references themselves, any style is acceptable as long as it is used
 consistently.
 
-As submission is double blind, refer to your own published work in the 
+As submission is double blind, refer to your own published work in the
 third person. That is, use ``In the previous work of Jones et al.\ [4]'',
 not ``In our previous work [4]''. If you cite your other papers that
 are not widely available (e.g.\ a journal paper under review), use
 anonymous author names in the citation, e.g.\ an author of the
-form ``A.\ Anonymous''. 
+form ``A.\ Anonymous''.
 
 
 \subsection{Footnotes}
@@ -191,7 +222,7 @@ first word and proper nouns); figures are numbered consecutively.
 Make sure the figure caption does not get separated from the figure.
 Leave sufficient space to avoid splitting the figure and figure caption.
 
-You may use color figures. 
+You may use color figures.
 However, it is best for the
 figure captions and the paper body to make sense if the paper is printed
 either in black/white or in color.
@@ -237,15 +268,15 @@ numbered.
 \subsubsection*{Acknowledgments}
 
 Use unnumbered third level headings for the acknowledgments. All
-acknowledgments go at the end of the paper. Do not include 
-acknowledgments in the anonymized submission, only in the 
-final paper. 
+acknowledgments go at the end of the paper. Do not include
+acknowledgments in the anonymized submission, only in the
+final paper.
 
 \subsubsection*{References}
 
 References follow the acknowledgments. Use unnumbered third level heading for
 the references. Any choice of citation style is acceptable as long as you are
-consistent. It is permissible to reduce the font size to `small' (9-point) 
+consistent. It is permissible to reduce the font size to `small' (9-point)
 when listing the references. {\bf Remember that this year you can use
 a ninth page as long as it contains \emph{only} cited references.}
 
