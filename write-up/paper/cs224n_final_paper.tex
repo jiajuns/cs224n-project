@@ -57,158 +57,116 @@ Stanford University \\
 \section{Introduction}
 \label{introduction}
 
-Machine Comprehension (MC) and Question Answering (QA) were increasingly popular in the past few years. Almost all human knowledge are recorded as text. Just like what we did in school doing reading comprehension questions, extracting information from a specific piece of context would enable artificial intelligence to get to a higher level. Different kinds of natural language processing structures such as Gated Recurrent Unit (GRU) and Long Short Term Memory (LSTM) has been introduced.
+Almost all human knowledge are recorded as text. The ability to read, understand and extract information from text is natural for human beings, but very challenging for machines. In recent years, the field of Machine Comprehension (MC) has made significant progress. Many end-to-end neural network systems have gained tremendous success on the task of Question Answering (QA), where the machines answer questions, using words contained within the given related context. Many of the success can be attributed to the invention of the attention mechanism, which allows the system to focus on specific area, may it be a sentence in a paragraph, or a selected region of pixels in an image. The leading models on the Stanford Question Answering Dataset (SQuAD) (Rajpurkar et al. 2016) , such as Dynamic Coattention Networks (Xiong et al. 2017) and Bi-Directional Attention Flow (Seo et al. 2017), all involves innovation on their attention mechanisms in the architecture. 
 
-These years, there are several QA database that has been released. In this paper, we describe a way using an improved version of bi-directional attention flow for the task of question answering using recently published Stanford Question Answering Dataset (SQuAD) which consisted of approximately 100K question-answer pairs with the context.
-
-The objective of the study was to extract the answer for a given question from a certain context. The model was built based on the previous hierarchical multi-stage bi-directional attention flow (BiDAF)) model (Minjoon Seo et al. 2017) while evaluating the correctness using corresponding F1 score and exact-match (EM) score.
-
+The objective of our project is to propose a filtering layer in the multi-layer hierarchical neural network architecture that can potentially enhance the performance of the attention mechanism. The filtering layer is inspired by the concept of similarity from collaborative filtering in recommendation systems and aims to amplify the hidden signal of relevant information while filtering out the redundant information. Our preliminary experimentation on the Stanford Question Answering Dataset (SQuAD) shows that the filtering layer can effectively assist the attention layer in Bi-Directional Attention Flow (BiDAF).
 \section{Models}
 \label{models}
 
-Our machine learning model (Figure 1) is hierachical multi-stage with 5 layers.
-
+Our neural network architecture (Figure 1) has six layers, of which four are identical to the BiDAF model and one is slightly modified. The remaining one is the filtering layer.
+\begin{enumerate}
+\item \textbf{Word Embedding Layer} maps each word to a high-dimensional representation using a pre-trained GloVe (Pennington et al.) word embedding model.
+\item \textbf{Filtering Layer} filters the redundant information and emphasizes on the most relevant context
+\item \textbf{Contextual Embedding Layer} models the contextual representation of words in its surrounding neighborhood
+\item \textbf{Attention Flow Layer} intertwine the contextual representation of words in the question and the context into a question-aware representation for each word in the context
+\item \textbf{Modeling Layer}  captures the interaction among the question-aware representation of words in the context
+\item \textbf{Output Layer} outputs the answer
+\end{enumerate}
 \subsection{Word Embedding Layer}
 
-The word embedding layer maps each individual word into a high-dimension vector space. It is a set of pretrained GloVe word vectors using datasets provided by Wikipedia 2014 and Gigaword 5. The dimensionality of the vectors are 100.
+The word embedding layer maps each individual word into a high-dimension vector space. It is a set of pre-trained GloVe (Pennington et al.) word vectors using datasets provided by Wikipedia 2014 and Gigaword 5. The dimensionality of the vectors $d$ is 100. The word embedding layer outputs the context representation $\textbf{X} \in \mathcal{R}^{d \times T}$, where $T$ is the maximum number of context length and $ \textbf{Q} \in \mathcal{R}^{d \times J}$, where $J$ is the maximum number of question length.
+
+\subsection{Filtering Layer}
+
+The filtering layer is inspired by Wang et al. (2016) and the concept of similarity of collaborative filtering in Recommendation Systems. The idea is that only a small portion of context is needed to answer the question so we use the cosine similarity to dampen the signal of redundant information. For each word pair with context word $x_i \in \textbf{X}$ and $q_j \in \textbf{Q}$, we compute the cosine similarity
+$$\text{sim}_{i,j} = \frac{x_i^T q_j}{|x_i||q_j|}$$
+And the relevancy is computed as a weighted average of the cosine similarity, with $W_{\text{sim}}$ as a trainable weights of $\mathcal{R}^{J}$.
+$$r_i = W_{\text{sim}}^T\left[\text{sim}_{i,:}\right]$$
+
 
 \subsection{Contextual Embedding Layer}
 
-In this layer, we introduced a Bi-directional Long Short-Term Memory (BiLSTM) network as our encoding layer. Contexts and questions will be fed into the network seperately, while the output from each state will all be recorded. Note that the output of which will be 2d-dimension vectors (where d is 100 in our model) due to the concatenation of two output for each direction of the network.
+We use a Bi-directional Long Short-Term Memory (LSTM) (Hochreiter et al.) network as our encoding layer. Contexts and questions will be fed into the network respectively, while the output from each hidden state are all be recorded. Note that the output of which will be $2d$-dimension vectors (where $d$ is 100 in our model) due to the concatenation of two output for both direction of the network.
 
 \begin{figure}[h]
 \begin{center}
 %\framebox[4.0in]{$\;$}
-\includegraphics[width=0.9\textwidth]{model_graph.jpeg}
+\includegraphics[width=0.9\textwidth]{withfilter.jpeg}
 \end{center}
 \caption{Bi-Directional Attention Flow Model }
 \end{figure}
 
 \subsection{Attention Flow Layer}
 
-The attention layer is introduced to link together the information from the question and the information given by the context. It tells us how important it is that we should pay attention to each word vector in the text (both contexts and questions). The input of this layer is contextual vector of the context H and the question U.
+The attention layer is used to couple the information from the question and the information given by the context. It categories the importance of the attention to each word vector in the text (both contexts and questions). The input of this layer is contextual vector of the context $\textbf{H}$ and the question $\textbf{U}$.
 
-In this layer, the attention is calculated from the similarity matrix of H and U as follow:\\
+In this layer, the attention is calculated from the similarity matrix of $\textbf{H}$ and $\textbf{U}$ as follow:\\
 \newline
-\centerline{$S_{ij}=\alpha (H_{:,t}, U(:,j))$}\\
+\centerline{$\textbf{S}_{ij}=\alpha (\textbf{H}_{:,t}, \textbf{U}(:,j))$}\\
 \newline
-where $S_ij$ indicates the similarity of the word i in the context and the word j in the query, and $\alpha$ is the bilinear factor which is defined as\\
+where $\textbf{S}_{ij}$ indicates the similarity of the word i in the context and the word j in the query, and $\alpha$ is the bilinear factor introduced by Chen et al. (2016) which is defined as\\
 \newline
-\centerline{$\alpha (h,u)=h^TW_{bi}u$}\\
+\centerline{$\alpha (h,u)=h^T\textbf{W}_{\text{bi}}u$}\\
 \newline
-W is a trainable matrix of $R^{2d\times 2d}$ (Chen et al. 2016).
+$\textbf{W}_{\text{bi}}$ is a trainable matrix of $\mathcal{R}^{2d\times 2d}$. The similarity matrix is different from the original BiDAF model where they used 
+$$\alpha (h,u)=\textbf{W}_{\text{bi}}^T[h; u; h \circ u]$$
 
 \subsubsection{Context-to-query Attention}
 
 The context-to-query attention indicates the weight of each word in the query considering the given context. The attention weight is computed as follow\\
-\newline
-\centerline{$weight=SoftMax(S_{i:})$}\\
-\newline
-so that the query vectors turn out to be\\
-\newline
-\centerline{$\hat{U}=\sum_j a_{ij}U_{:j}$}\\
+$$a_i=\text{SoftMax}(S_{i:})$$
+The attended query vector for the entire context is computed as
+$$\hat{\textbf{U}}=\sum_j a_{ij}\textbf{U}_{:j}$$
 
 \subsubsection{Query-to-context Attention}
 
 The query-to-context attention indicates the weight of each context word considering the given query. Similar to what we did in context-to-query attention, the attention weights are calculated from\\
+$$b=\text{SoftMax}(max_{col}(\textbf{S}))$$
+and the attended context vector matrix can be computed as
+$$\hat{\textbf{H}}=\sum_t b_t\textbf{U}_{:t}$$
+Then we combined three vectors as the yield G, where $\beta$ is a trainable vector of $\mathcal{R}^{8d\times T}$\\
 \newline
-\centerline{$b=SoftMax(max_{col}(S)$}\\
-\newline
-and
-\newline
-\centerline{$\hat{H}=\sum_tb_tH_{:t}$}\\
-\newline
-Then we combined three vectors as the yield G, where $\beta$ is a trainable vector of $R^{8d\times T}$\\
-\newline
-\centerline{$G=\beta (H, \hat{U}, \hat{H})$}\\
+$$\textbf{G}=\beta (\textbf{H}, \hat{\textbf{U}}, \hat{\textbf{H}})$$
 
 \subsection{Modeling Layer}
 
-The input of the modeling layer (decoding layer) encrypts the information of the context together with some information from the query. So that when we pass the tensor to a bi-LSTM network, similar to what we did in the contextual embedding layer, the output would be a matrix of $R^{2d\times T}$, where T indicates the number of context in the dataset.
+The input of the modeling layer (decoding layer) encrypts the information of the context together with some information from the query. So that when we pass the tensor to a bi-LSTM network, similar to what we did in the contextual embedding layer, the output would be a matrix of $\mathcal{R}^{2d\times T}$, where $T$ is maximum number of context length.
 
 \subsection{Output Layer}
 
-In this layer, we provides the answer to questions by calculating the probability for each position in the context as the start and the end of the answer with SoftMax. However, in some situations, though very rare, we would flip over the start and ending labels if the ending predicted maybe even appears earlier than the start in the context. It would be discussed more in detail in section 4.
+In this layer, we output the answer to questions by calculating the probability for each position in the context as the start and the end of the answer with SoftMax. However, in some situations, though very rare, we would flip over the start and ending labels if the ending predicted maybe even appears earlier than the start in the context. 
+
 
 \section{Experiment}
 \subsection{Dataset}
 In this experiment, we take Stanford Question Answering Dataset (SQuAD) to train our model.
-The dataset is split into training and validation set. The training set consists of 81381 samples.
-Each sample comprises of a context paragraph, question and answer.
-The context paragraphs have length smaller than 1000. Questions have length smaller than 100.
-Based on these result, the max context length is limited to 1000 and max question length is limited to 100.
-
-\subsection{Baseline}
-The baseline model processes contextual embeddings and word embeddings through bi-LSTM layer respectively.
-The hidden state vector from each bi-LSTM layer then go through the attention flow layer.
-The tensor comes out from attention flow layer has information from both context and question.
-This tensor will then pass to decoder. The decoder is another bi-LSTM layer; and two softmax layers one for predicting start position and the other for predicting end position.
-
-\subsection{Modified Model}
-In addition to the baseline model, we also modify the model in several different ways to compare the result.
-As shown in figure xx, a filter layer is added between the contextual embedding layer and Bi-LSTM layer.
-This filter layer will compute the similarity between context and question. As a result, the filter layer will give an emphasis on the context embeddings.
-Another modification we made is on the glove word vector. The dimsion of glove word vector is increased from 100 to 300.
-
+The dataset is split 95/5 into a training and a validation set . The training set contains 81381 samples while the validation set contains 4284 samples. Each sample comprises of a context paragraph, question and answer.
 \subsection{Model Details}
-
-
+\subsubsection{Maximum context and question length}
+The longest context paragraph has 2834 words. The longest question has 281 words. The overwhelming majority of the contexts are shorter than 1000 words and the questions shorter than 100 words. Moreover, based on the training data, we found that the latest answer ends at the 605-th word of the context. To speed up the computation, we limit the maximum context length to 605 and the maximum question length to 100.
+\subsubsection{Padding \& Masking}
+The context paragraphs and questions shorter than the their maximum lengths is padded with the special token $\it{\langle pad \rangle}$. When computing the cost, the padded portion are masked with exponential masking before applying the softmax function.
+\subsubsection{Training Parameter}
+The model is trained for 12 epochs with a batch size of 150 and a learning rate 0f 0.001, which decays at a rate of 0.9 per epoch using the staircase exponential decay API in Tensorflow. 
 \section{Result}
-The results of all the model are summarized in Table xx. Best run of our baseline achieves an F1 score of 61 and EM of xx.
-
+\begin{table}[t]
+\caption{Results Summary}
+\begin{center}
+\begin{tabular}{ |c||c|c|c|  }
+ \hline
+ \bf Model & \bf Description & \bf Validation Set & \bf Test Set\\
+ \hline
+  Baseline   & BiDAF model w/o filtering layer    &57.2&  \\
+  Filtered   & BiDAF model w/ filtering layer    & \bf 61.8&  \bf 56.5 \\
+    \hline
+    \multicolumn{1}{l}{XXX}
+\end{tabular}
+\end{center}
+\end{table}
 \subsection{Discussion}
 \subsection{Error Analysis}
 
 \section{Conclusion}
-
-\section{Headings: first level}
-\label{headings}
-
-First level headings are lower case (except for first word and proper nouns),
-flush left, bold and in point size 12. One line space before the first level
-heading and 1/2~line space after the first level heading.
-
-\subsection{Headings: second level}
-
-Second level headings are lower case (except for first word and proper nouns),
-flush left, bold and in point size 10. One line space before the second level
-heading and 1/2~line space after the second level heading.
-
-\subsubsection{Headings: third level}
-
-Third level headings are lower case (except for first word and proper nouns),
-flush left, bold and in point size 10. One line space before the third level
-heading and 1/2~line space after the third level heading.
-
-\section{Citations, figures, tables, references}
-\label{others}
-
-These instructions apply to everyone, regardless of the formatter being used.
-
-\subsection{Citations within the text}
-
-Citations within the text should be numbered consecutively. The corresponding
-number is to appear enclosed in square brackets, such as [1] or [2]-[5]. The
-corresponding references are to be listed in the same order at the end of the
-paper, in the \textbf{References} section. (Note: the standard
-\textsc{Bib\TeX} style \texttt{unsrt} produces this.) As to the format of the
-references themselves, any style is acceptable as long as it is used
-consistently.
-
-As submission is double blind, refer to your own published work in the
-third person. That is, use ``In the previous work of Jones et al.\ [4]'',
-not ``In our previous work [4]''. If you cite your other papers that
-are not widely available (e.g.\ a journal paper under review), use
-anonymous author names in the citation, e.g.\ an author of the
-form ``A.\ Anonymous''.
-
-
-\subsection{Footnotes}
-
-Indicate footnotes with a number\footnote{Sample of the first footnote} in the
-text. Place the footnotes at the bottom of the page on which they appear.
-Precede the footnote with a horizontal rule of 2~inches
-(12~picas).\footnote{Sample of the second footnote}
 
 \subsection{Figures}
 
@@ -244,28 +202,8 @@ Place one line space before the table title, one line space after the table
 title, and one line space after the table. The table title must be lower case
 (except for first word and proper nouns); tables are numbered consecutively.
 
-\begin{table}[t]
-\caption{Sample table title}
-\label{sample-table}
-\begin{center}
-\begin{tabular}{ll}
-\multicolumn{1}{c}{\bf PART}  &\multicolumn{1}{c}{\bf DESCRIPTION}
-\\ \hline \\
-Dendrite         &Input terminal \\
-Axon             &Output terminal \\
-Soma             &Cell body (contains cell nucleus) \\
-\end{tabular}
-\end{center}
-\end{table}
 
-\section{Final instructions}
-Do not change any aspects of the formatting parameters in the style files.
-In particular, do not modify the width or length of the rectangle the text
-should fit into, and do not change font sizes (except perhaps in the
-\textbf{References} section; see below). Please note that pages should be
-numbered.
-
-\subsubsection*{Acknowledgments}
+\section{Acknowledgments}
 
 Use unnumbered third level headings for the acknowledgments. All
 acknowledgments go at the end of the paper. Do not include
@@ -273,32 +211,20 @@ acknowledgments in the anonymized submission, only in the
 final paper.
 
 \subsubsection*{References}
-
-References follow the acknowledgments. Use unnumbered third level heading for
-the references. Any choice of citation style is acceptable as long as you are
-consistent. It is permissible to reduce the font size to `small' (9-point)
-when listing the references. {\bf Remember that this year you can use
-a ninth page as long as it contains \emph{only} cited references.}
-
 \small{
-[1] Danqi Chen., Jason Bolton. \& Christopher D. Manning. (2016) A thorough examination of the cnn/daily mail reading comprehension task. {\it arXiv:1606.02858}
+[1] Rajpurkar P., Zhang J., Lopyrev K., Liang P. (2016) SQuAD: 100,000+ Questions for Machine Comprehension of Text, {\it Empirical Methods in Natural Language Processing (EMNLP 2016)}
 
+[2] Xiong C., Zhong V., Socher R., (2017) Dynamic Coattention Networks for Question Answering, {\it International Conference on Learning Representations (ICLR 2017)}
 
+[3] Seo M., Kembhavi A., Farhadi A., Hajishirzi H. (2017) Bi-Directional Attention Flow for Machine Comprehension, {\it International Conference on Learning Representations (ICLR 2017)}
 
-% Reference template. Delete when finished
-[1] Alexander, J.A. \& Mozer, M.C. (1995) Template-based algorithms
-for connectionist rule extraction. In G. Tesauro, D. S. Touretzky
-and T.K. Leen (eds.), {\it Advances in Neural Information Processing
-Systems 7}, pp. 609-616. Cambridge, MA: MIT Press.
+[4] Pennington J., Socher R., Manning C.D. (2014) Glove: Global Vectors for Word Representation, {\it Empirical Methods in Natural Language Processing (EMNLP 2014)}
 
-[2] Bower, J.M. \& Beeman, D. (1995) {\it The Book of GENESIS: Exploring
-Realistic Neural Models with the GEneral NEural SImulation System.}
-New York: TELOS/Springer-Verlag.
+[5] Hochreiter S., Schmidhuber J., Long short-term memory, {\it Neural Computation, 1997}
 
-[3] Hasselmo, M.E., Schnell, E. \& Barkai, E. (1995) Dynamics of learning
-and recall at excitatory recurrent synapses and cholinergic modulation
-in rat hippocampal region CA3. {\it Journal of Neuroscience}
-{\bf 15}(7):5249-5262.
+[6] Wang Z., Mi H., Hamza W., Florian R. (2016) Multi-Perspective Context Matching for Machine Comprehension, {\it In eprint arXiv:1612.04211}
+
+[7] Chen D., Bolton J., Manning, C.D. (2016) A Thorough Examination of the
+CNN/Daily Mail Reading Comprehension Task, {\it Conference Proceedings of Association for Computational Linguistics (ACL 2017)}
 }
-
 \end{document}

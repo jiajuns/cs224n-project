@@ -1,18 +1,23 @@
 \BOOKMARK [1][-]{section.1}{Introduction}{}% 1
 \BOOKMARK [1][-]{section.2}{Models}{}% 2
 \BOOKMARK [2][-]{subsection.2.1}{Word Embedding Layer}{section.2}% 3
-\BOOKMARK [2][-]{subsection.2.2}{Contextual Embedding Layer}{section.2}% 4
-\BOOKMARK [2][-]{subsection.2.3}{Attention Flow Layer}{section.2}% 5
-\BOOKMARK [3][-]{subsubsection.2.3.1}{Context-to-query Attention}{subsection.2.3}% 6
-\BOOKMARK [3][-]{subsubsection.2.3.2}{Query-to-context Attention}{subsection.2.3}% 7
-\BOOKMARK [2][-]{subsection.2.4}{Modeling Layer}{section.2}% 8
-\BOOKMARK [2][-]{subsection.2.5}{Output Layer}{section.2}% 9
-\BOOKMARK [1][-]{section.3}{Headings: first level}{}% 10
-\BOOKMARK [2][-]{subsection.3.1}{Headings: second level}{section.3}% 11
-\BOOKMARK [3][-]{subsubsection.3.1.1}{Headings: third level}{subsection.3.1}% 12
-\BOOKMARK [1][-]{section.4}{Citations, figures, tables, references}{}% 13
-\BOOKMARK [2][-]{subsection.4.1}{Citations within the text}{section.4}% 14
-\BOOKMARK [2][-]{subsection.4.2}{Footnotes}{section.4}% 15
-\BOOKMARK [2][-]{subsection.4.3}{Figures}{section.4}% 16
-\BOOKMARK [2][-]{subsection.4.4}{Tables}{section.4}% 17
-\BOOKMARK [1][-]{section.5}{Final instructions}{}% 18
+\BOOKMARK [2][-]{subsection.2.2}{Filtering Layer}{section.2}% 4
+\BOOKMARK [2][-]{subsection.2.3}{Contextual Embedding Layer}{section.2}% 5
+\BOOKMARK [2][-]{subsection.2.4}{Attention Flow Layer}{section.2}% 6
+\BOOKMARK [3][-]{subsubsection.2.4.1}{Context-to-query Attention}{subsection.2.4}% 7
+\BOOKMARK [3][-]{subsubsection.2.4.2}{Query-to-context Attention}{subsection.2.4}% 8
+\BOOKMARK [2][-]{subsection.2.5}{Modeling Layer}{section.2}% 9
+\BOOKMARK [2][-]{subsection.2.6}{Output Layer}{section.2}% 10
+\BOOKMARK [1][-]{section.3}{Experiment}{}% 11
+\BOOKMARK [2][-]{subsection.3.1}{Dataset}{section.3}% 12
+\BOOKMARK [2][-]{subsection.3.2}{Model Details}{section.3}% 13
+\BOOKMARK [3][-]{subsubsection.3.2.1}{Maximum context and question length}{subsection.3.2}% 14
+\BOOKMARK [3][-]{subsubsection.3.2.2}{Padding \046 Masking}{subsection.3.2}% 15
+\BOOKMARK [3][-]{subsubsection.3.2.3}{Training Parameter}{subsection.3.2}% 16
+\BOOKMARK [1][-]{section.4}{Result}{}% 17
+\BOOKMARK [2][-]{subsection.4.1}{Discussion}{section.4}% 18
+\BOOKMARK [2][-]{subsection.4.2}{Error Analysis}{section.4}% 19
+\BOOKMARK [1][-]{section.5}{Conclusion}{}% 20
+\BOOKMARK [2][-]{subsection.5.1}{Figures}{section.5}% 21
+\BOOKMARK [2][-]{subsection.5.2}{Tables}{section.5}% 22
+\BOOKMARK [1][-]{section.6}{Acknowledgments}{}% 23
