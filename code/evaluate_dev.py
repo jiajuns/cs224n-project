@@ -78,12 +78,12 @@ def formulate_answer(context, rev_vocab, start, end, mask = None):
                     answer += ' '
     return answer
 
-def construct_result(index, f1, RoW, dataset, true_s, true_e, pre_s, pre_e, pre_ans, true_ans, rev_vocab):
+def construct_result(index, f1, RoW, dataset, true_s, true_e, pre_s, pre_e, pre_ans, true_ans, rev_vocab, relevence_str):
     context = dataset[0]
     context_mask = dataset[1]
     question = dataset[2]
     question_mask = dataset[3]
-    machine_list = [index, f1, RoW, len(context), len(question), abs(true_s - true_e), true_s, true_e]
+    machine_list = [index, f1, RoW, sum(context_mask), sum(question_mask), abs(true_s - true_e), true_s, true_e]
     list_str = ' '.join(str(value) for value in machine_list)
     question_string = formulate_answer(question, rev_vocab, 0, len(question) - 1, mask = question_mask)
     context_string = formulate_answer(context, rev_vocab, 0, len(context) - 1, mask = context_mask)
@@ -91,7 +91,8 @@ def construct_result(index, f1, RoW, dataset, true_s, true_e, pre_s, pre_e, pre_
         'context': context_string,
         'question': question_string,
         'true_ans': true_ans,
-        'predict_ans': pre_ans
+        'predict_ans': pre_ans,
+        'relevence': relevence_str
     }
     return list_str, human_dic
 
@@ -118,7 +119,7 @@ def generate_answers(sess, model, dataset, rev_vocab):
         print("batch {} out of {}".format(batch+1, num_batches))
         batch_f1 = 0.
         batch_em = 0.
-        h_s, h_e = model.decode(sess, dataset[start:start + minibatch_size])
+        h_s, h_e, relevence = model.decode(sess, dataset[start:start + minibatch_size])
         for i in range(minibatch_size):
             a_s = np.argmax(h_s[i])
             a_e = np.argmax(h_e[i])
@@ -127,6 +128,7 @@ def generate_answers(sess, model, dataset, rev_vocab):
                 a_e = a_s
                 a_s = k
 
+            relevence_str = ' '.join(str(value) for value in relevence[i])
             sample_dataset = dataset[start + i]
             context = sample_dataset[0]
             (a_s_true, a_e_true) = sample_dataset[6]
@@ -148,7 +150,8 @@ def generate_answers(sess, model, dataset, rev_vocab):
                 index, f1, RoW, sample_dataset,
                 a_s_true, a_e_true,
                 a_s, a_e,
-                predicted_answer, true_answer, rev_vocab
+                predicted_answer, true_answer,
+                rev_vocab, relevence_str
             )
             output_list.append(tmp_list)
             output_dict[index] = tmp_dict

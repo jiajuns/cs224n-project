@@ -157,10 +157,11 @@ def generate_answers(sess, model, dataset, rev_vocab):
     question_padded, question_mask = pad_sequence(question_data, FLAGS.max_question_len)
     input_data = vectorize(context_padded, context_mask, question_padded, question_mask)
 
-    minibatch_size = 10
+    minibatch_size = 20
     for start in tqdm(range(0, len(question_uuid_data), minibatch_size), desc="predicting on test"):
         h_s, h_e = model.decode(sess, input_data[start:start + minibatch_size])
-        for i in range(minibatch_size):
+        iter_num = min(minibatch_size, len(question_uuid_data)-start-minibatch_size)
+        for i in range(iter_num):
             a_s = np.argmax(h_s[i])
             a_e = np.argmax(h_e[i])
             if a_s > a_e:

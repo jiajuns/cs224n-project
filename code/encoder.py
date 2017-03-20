@@ -132,7 +132,7 @@ class BiLSTM_Encoder():
             # relevence = tf.reshape(tf.matmul(cosine_sim_reshape, w_f), [-1, self.max_context_len, 1])    # (?m, n) * (n, 1) => (?m, 1) => (?, m, 1)
             relevence = tf.einsum('aij,aik->ajk', cosine_sim, w_f_tiled)  # (?, n, m) * (?, n, 1) => (?, m, 1)
             # relevence = tf.reduce_max(cosine_sim, axis=2, keep_dims=True) # (?, m, 1)
-        return context * relevence
+        return context * relevence, relevence
 
     def encode(self, context, question, context_mask, question_mask, dropout):
         """
@@ -150,12 +150,12 @@ class BiLSTM_Encoder():
                  or both.
         """
         if self.filter_flag:
-            filtered_context = self.filter_layer(question, context)
+            filtered_context, relevence = self.filter_layer(question, context)
             yc = self.BiLSTM(filtered_context, context_mask, self.max_context_len, 'context_BiLSTM', dropout) # (?, 2h, m)
         else:
             yc = self.BiLSTM(context, context_mask, self.max_context_len, 'context_BiLSTM', dropout) # (?, 2h, m)
         yq = self.BiLSTM(question, question_mask, self.max_question_len, 'question_BiLSTM', dropout) # (?, 2h, n)
-        return yq, yc, self.bi_attention(yq, yc)
+        return yq, yc, self.bi_attention(yq, yc), relevence
 
 class Dummy_Encoder(object):
     def LSTM(self, inputs, masks, length):
